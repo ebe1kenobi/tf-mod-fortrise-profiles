@@ -1,0 +1,13 @@
+﻿{
+	"name": "Ebe1.Profiles",
+	"version": "1.16.0",
+	"author": "ebe1.kenobi",
+	"description": "Player profiles: name, favourite archer and costume",
+	"dll": "TFModFortRiseProfiles.dll",
+	"dependencies": [
+		{
+			"name": "FortRise",
+			"version": "5.3.3"
+		}
+	]
+}
