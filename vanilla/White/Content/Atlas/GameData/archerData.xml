@@ -1,0 +1,82 @@
+<Archers>
+  <Archer id="White">
+    <Name0>ANCIENT</Name0>
+    <Name1>EXILE</Name1>
+    <ColorA>E5E5E5</ColorA>
+    <ColorB>FFFFFF</ColorB>
+    <LightbarColor>FFFFFF</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_white.png</Aimer>
+    <Hair>True</Hair>
+    <SFX>4</SFX>
+    <Corpse>@White</Corpse>
+    <VictoryMusic>White</VictoryMusic>
+    <Gender>Female</Gender>
+    <Sprites>
+      <Body>@PlayerBody4</Body>
+      <HeadNormal>@PlayerHeadNormal4</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat4</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown4</HeadCrown>
+      <Bow>@PlayerBow4</Bow>
+    </Sprites>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined4.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined4.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win4.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose4.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_white.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_whiteGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem4</Menu>
+      <Gameplay>@Gem4</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-6" />
+      <DuckingOffset x="10" y="0" />
+      <Interval>120</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="WhiteAlt" Alt="@White">
+    <Name0>SACRED</Name0>
+    <Name1>SISTER</Name1>
+    <Hair>False</Hair>
+    <Corpse>@White</Corpse>
+    <VictoryMusic>WhiteAlt</VictoryMusic>
+    <Sprites>
+      <Body>@White_Alt</Body>
+      <HeadNormal>@White_AltHead</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat4</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown4</HeadCrown>
+      <Bow>@White_AltBow</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_white_alt_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_white_alt_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_white_alt_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt4.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt4.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt4.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt4.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_whiteAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_whiteAltGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem4</Menu>
+      <Gameplay>@Gem4</Gameplay>
+    </Gems>
+  </AltArcher>
+  <SecretArcher id="WhiteSecret" Secret="@White">
+    <StartNoHat>True</StartNoHat>
+    <Portraits>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined4.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win4.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose4.png</Lose>
+    </Portraits>
+  </SecretArcher>
+</Archers>

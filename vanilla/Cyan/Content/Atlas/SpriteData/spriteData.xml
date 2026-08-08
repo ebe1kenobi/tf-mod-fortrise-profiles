@@ -1,0 +1,205 @@
+<SpriteData>
+  <sprite_string id="PlayerBody6">
+    <Texture>Content/Atlas/sprites/player/player_body_6.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_body_6_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_body_6_blue.png</BlueTexture>
+    <FrameWidth>13</FrameWidth>
+    <FrameHeight>20</FrameHeight>
+    <OriginX>8</OriginX>
+    <OriginY>20</OriginY>
+    <X>0</X>
+    <Y>8</Y>
+    <SlideHead>False</SlideHead>
+    <Animations>
+      <Anim id="stand" frames="0" />
+      <Anim id="run" delay=".06" frames="0,1,2,3" />
+      <Anim id="jump" delay=".06" frames="5,6" loop="False" />
+      <Anim id="fall" delay=".06" frames="7,8" loop="True" />
+      <Anim id="glide" delay=".06" frames="7,8" loop="True" />
+      <Anim id="ledge" frames="4" />
+      <Anim id="dodge" frames="9,10" />
+      <Anim id="duck" frames="11" />
+      <Anim id="slide_normal" delay=".05" frames="12,13,14,15,16,17,18,19" />
+      <Anim id="slide_nohat" delay=".05" frames="20,21,22,23,24,25" />
+      <Anim id="slide_crown" delay=".05" frames="26,27,28,29,30,31" />
+    </Animations>
+    <HeadYOrigins>19,19,18,17,19,19,18,18,18,18,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</HeadYOrigins>
+  </sprite_string>
+  <sprite_string id="PlayerHeadNormal6">
+    <Texture>Content/Atlas/sprites/player/player_head_Normal6.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_head_Normal6_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_head_Normal6_blue.png</BlueTexture>
+    <FrameWidth>11</FrameWidth>
+    <FrameHeight>10</FrameHeight>
+    <OriginX>7</OriginX>
+    <OriginY>0</OriginY>
+    <X>0</X>
+    <Y>8</Y>
+    <Animations>
+      <Anim id="idle" frames="0" />
+      <Anim id="lookUp" frames="1" />
+      <Anim id="lookDown" frames="2" />
+      <Anim id="lookBack" frames="3" />
+      <Anim id="idleFall" frames="0" />
+      <Anim id="lookUpFall" frames="1" />
+      <Anim id="lookDownFall" frames="2" />
+      <Anim id="lookBackFall" frames="3" />
+      <Anim id="idleJump" frames="0" />
+      <Anim id="lookUpJump" frames="1" />
+      <Anim id="lookDownJump" frames="2" />
+      <Anim id="lookBackJump" frames="3" />
+      <Anim id="duck" delay="1" loop="False" frames="4" />
+    </Animations>
+  </sprite_string>
+  <sprite_string id="PlayerHeadNoHat6">
+    <Texture>Content/Atlas/sprites/player/player_head_NoHat6.png</Texture>
+    <FrameWidth>11</FrameWidth>
+    <FrameHeight>10</FrameHeight>
+    <OriginX>7</OriginX>
+    <OriginY>0</OriginY>
+    <X>0</X>
+    <Y>8</Y>
+    <Animations>
+      <Anim id="idle" frames="0" />
+      <Anim id="lookUp" frames="1" />
+      <Anim id="lookDown" frames="2" />
+      <Anim id="lookBack" frames="3" />
+      <Anim id="idleFall" frames="0" />
+      <Anim id="lookUpFall" frames="1" />
+      <Anim id="lookDownFall" frames="2" />
+      <Anim id="lookBackFall" frames="3" />
+      <Anim id="idleJump" frames="0" />
+      <Anim id="lookUpJump" frames="1" />
+      <Anim id="lookDownJump" frames="2" />
+      <Anim id="lookBackJump" frames="3" />
+      <Anim id="duck" delay="1" loop="False" frames="4" />
+    </Animations>
+  </sprite_string>
+  <sprite_string id="PlayerHeadCrown6">
+    <Texture>Content/Atlas/sprites/player/player_head_Crown6.png</Texture>
+    <FrameWidth>11</FrameWidth>
+    <FrameHeight>10</FrameHeight>
+    <OriginX>7</OriginX>
+    <OriginY>0</OriginY>
+    <X>0</X>
+    <Y>8</Y>
+    <Animations>
+      <Anim id="idle" frames="0" />
+      <Anim id="lookUp" frames="1" />
+      <Anim id="lookDown" frames="2" />
+      <Anim id="lookBack" frames="3" />
+      <Anim id="idleFall" frames="0" />
+      <Anim id="lookUpFall" frames="1" />
+      <Anim id="lookDownFall" frames="2" />
+      <Anim id="lookBackFall" frames="3" />
+      <Anim id="idleJump" frames="0" />
+      <Anim id="lookUpJump" frames="1" />
+      <Anim id="lookDownJump" frames="2" />
+      <Anim id="lookBackJump" frames="3" />
+      <Anim id="duck" delay="1" loop="False" frames="4" />
+    </Animations>
+  </sprite_string>
+  <sprite_string id="PlayerBow6">
+    <Texture>Content/Atlas/sprites/player/player_bow6.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_bow6_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_bow6_blue.png</BlueTexture>
+    <FrameWidth>15</FrameWidth>
+    <FrameHeight>14</FrameHeight>
+    <OriginX>5</OriginX>
+    <OriginY>7</OriginY>
+    <X>0</X>
+    <Y>-1</Y>
+    <DownY>1</DownY>
+    <Animations>
+      <Anim id="idle" frames="3" />
+      <Anim id="drawn" loop="False" delay="0.05" frames="0,1,2" />
+      <Anim id="drawnEmpty" frames="6" />
+    </Animations>
+  </sprite_string>
+  <sprite_int id="Gem6">
+    <Texture>Content/Atlas/sprites/pickups/pickups_cyanGem.png</Texture>
+    <FrameWidth>10</FrameWidth>
+    <FrameHeight>10</FrameHeight>
+    <OriginX>5</OriginX>
+    <OriginY>5</OriginY>
+    <Animations>
+      <Anim id="0" delay=".1" loop="True" frames="1,2,3,4,5,6,1,1,1,1,1,1,1,1,1,1,1,1,1" />
+    </Animations>
+  </sprite_int>
+  <sprite_string id="Cyan_Alt">
+    <Texture>Content/Atlas/sprites/player/player_Cyan_Alt.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_Cyan_Alt_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_Cyan_Alt_blue.png</BlueTexture>
+    <FrameWidth>13</FrameWidth>
+    <FrameHeight>20</FrameHeight>
+    <OriginX>8</OriginX>
+    <OriginY>20</OriginY>
+    <X>0</X>
+    <Y>8</Y>
+    <SlideHead>False</SlideHead>
+    <HideBow>True</HideBow>
+    <HideBowIdle>True</HideBowIdle>
+    <Animations>
+      <Anim id="stand" frames="0" />
+      <Anim id="stand_aim" frames="33" />
+      <Anim id="run" delay=".07" frames="0,1,2,3" />
+      <Anim id="run_aim" delay=".07" frames="33,34,35,36" />
+      <Anim id="jump" delay=".06" frames="5,6" loop="False" />
+      <Anim id="jump_aim" delay=".06" frames="37,38" loop="False" />
+      <Anim id="fall" delay=".06" frames="7,8" loop="True" />
+      <Anim id="fall_aim" delay=".06" frames="39,40" loop="True" />
+      <Anim id="glide" delay=".1" frames="7,8" loop="True" />
+      <Anim id="glide_aim" delay=".1" frames="39,40" loop="True" />
+      <Anim id="ledge" frames="4" />
+      <Anim id="dodge" frames="9,10" />
+      <Anim id="duck" frames="11" />
+      <Anim id="slide_normal" delay=".05" frames="12,13,14,15,16,17,18" />
+      <Anim id="slide_nohat" delay=".05" frames="19,20,21,22,23,24,25" />
+      <Anim id="slide_crown" delay=".05" frames="26,27,28,29,30,31,32" />
+    </Animations>
+    <HeadYOrigins>19,20,19,18,19,20,20,20,20,20,20,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,19,20,19,18,20,20,20,20</HeadYOrigins>
+  </sprite_string>
+  <sprite_string id="Cyan_AltHead">
+    <Texture>Content/Atlas/sprites/player/player_head_Cyan_AltHead.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_head_Cyan_AltHead_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_head_Cyan_AltHead_blue.png</BlueTexture>
+    <FrameWidth>13</FrameWidth>
+    <FrameHeight>10</FrameHeight>
+    <OriginX>8</OriginX>
+    <OriginY>0</OriginY>
+    <X>0</X>
+    <Y>7</Y>
+    <Animations>
+      <Anim id="idle" frames="0" />
+      <Anim id="lookUp" frames="1" />
+      <Anim id="lookDown" frames="2" />
+      <Anim id="lookBack" frames="3" />
+      <Anim id="idleFall" frames="5" />
+      <Anim id="lookUpFall" frames="6" />
+      <Anim id="lookDownFall" frames="7" />
+      <Anim id="lookBackFall" frames="8" />
+      <Anim id="idleJump" delay=".05" loop="true" frames="10,15" />
+      <Anim id="lookUpJump" delay=".05" loop="true" frames="11,16" />
+      <Anim id="lookDownJump" delay=".05" loop="true" frames="12,17" />
+      <Anim id="lookBackJump" delay=".05" loop="true" frames="13,18" />
+      <Anim id="duck" delay="1" loop="False" frames="4" />
+    </Animations>
+  </sprite_string>
+  <sprite_string id="Cyan_AltBow">
+    <Texture>Content/Atlas/sprites/player/player_Cyan_AltBow.png</Texture>
+    <RedTexture>Content/Atlas/sprites/player/player_Cyan_AltBow_red.png</RedTexture>
+    <BlueTexture>Content/Atlas/sprites/player/player_Cyan_AltBow_blue.png</BlueTexture>
+    <FrameWidth>15</FrameWidth>
+    <FrameHeight>14</FrameHeight>
+    <OriginX>5</OriginX>
+    <OriginY>7</OriginY>
+    <X>0</X>
+    <Y>-1</Y>
+    <DownY>1</DownY>
+    <Animations>
+      <Anim id="idle" frames="3" />
+      <Anim id="drawn" loop="False" delay="0.05" frames="0,1,2" />
+      <Anim id="drawnEmpty" frames="6" />
+    </Animations>
+  </sprite_string>
+</SpriteData>

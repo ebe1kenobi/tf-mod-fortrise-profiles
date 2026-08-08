@@ -1,0 +1,76 @@
+<Archers>
+  <Archer id="Orange">
+    <Name0>TURNCLOAK</Name0>
+    <Name1>SOLDIER</Name1>
+    <ColorA>EF8C21</ColorA>
+    <ColorB>FFB15E</ColorB>
+    <LightbarColor>FF4500</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_orange.png</Aimer>
+    <SFX>3</SFX>
+    <Corpse>@Orange</Corpse>
+    <VictoryMusic>Orange</VictoryMusic>
+    <Gender>Male</Gender>
+    <Sprites>
+      <Body>@PlayerBody3</Body>
+      <HeadNormal>@PlayerHeadNormal3</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat3</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown3</HeadCrown>
+      <Bow>@PlayerBow3</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_orange_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_orange_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_orange_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined3.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined3.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win3.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose3.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_orange.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_orangeGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem3</Menu>
+      <Gameplay>@Gem3</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-6" />
+      <DuckingOffset x="10" y="2" />
+      <Interval>180</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="OrangeAlt" Alt="@Orange">
+    <Name0>LOYAL</Name0>
+    <Name1>KINGSGUARD</Name1>
+    <Corpse>@Orange_Alt</Corpse>
+    <StartNoHat>True</StartNoHat>
+    <VictoryMusic>OrangeAlt</VictoryMusic>
+    <SFX>11</SFX>
+    <Sprites>
+      <Body>@Orange_Alt</Body>
+      <HeadNormal>@Orange_AltHead</HeadNormal>
+      <HeadNoHat>@Orange_AltHead</HeadNoHat>
+      <HeadCrown>@Orange_AltCrown</HeadCrown>
+      <Bow>@Orange_AltBow</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_orange_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_orange_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_orange_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt3.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt3.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt3.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt3.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_orangeAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_orangeAltGlow.png</Glow>
+    </Statue>
+    <StartNoHat>True</StartNoHat>
+  </AltArcher>
+</Archers>

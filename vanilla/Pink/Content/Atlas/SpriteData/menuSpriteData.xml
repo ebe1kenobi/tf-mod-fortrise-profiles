@@ -1,0 +1,14 @@
+<SpriteData>
+  <sprite_string id="Gem2">
+    <Texture>Content/Atlas/sprites/portraits/portraits_gem2.png</Texture>
+    <FrameWidth>20</FrameWidth>
+    <FrameHeight>20</FrameHeight>
+    <OriginX>10</OriginX>
+    <OriginY>10</OriginY>
+    <Y>60</Y>
+    <Animations>
+      <Anim id="off" frames="0" />
+      <Anim id="on" delay=".06" loop="True" frames="1,2,3,4,5,6,7,8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" />
+    </Animations>
+  </sprite_string>
+</SpriteData>

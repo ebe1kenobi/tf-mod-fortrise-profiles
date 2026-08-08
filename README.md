@@ -18,6 +18,7 @@ Une lame `PROFILES` s'ajoute au menu principal, entre `MODS` et `OPTIONS`.
 - [Sons](#sons)
 - [Images](#images)
 - [Couleurs du sprite](#couleurs-du-sprite)
+- [Archer Forge](#archer-forge)
 - [Touches](#touches)
 - [Plusieurs joueurs sur le meme archer](#plusieurs-joueurs-sur-le-meme-archer)
 - [Ou vivent les donnees](#ou-vivent-les-donnees)
@@ -229,6 +230,105 @@ une couleur rendue apres coup ressortirait sur la moitie des particules en vol.
 
 Ils gardent integralement les couleurs du jeu — sprites, noms, objets et particules.
 Ces couleurs designent le camp, les remplacer supprimerait l'information.
+
+## Archer Forge
+
+`ARCHER FORGE`, en tete de la liste des profils, fabrique de nouveaux archers a
+partir d'images decoupees. Un archer forge s'essaie **sans redemarrer le jeu**, ou
+s'exporte comme un mod autonome.
+
+### Le vivier
+
+Les images viennent d'un dossier decoupe par `script/slice_sheets.py` : un
+repertoire par planche, une image par case, un `index.json` decrivant la grille.
+La forge le lit dans `Saves/Ebe1.Profiles/sprites`, ou a l'endroit qu'indique un
+fichier `sprites.path` — trente mille fichiers ne se recopient pas a chaque essai.
+
+Seules les planches en cases de 32x32 sont proposees. Toute la geometrie de la forge
+- fenetre de decoupe, image de sortie de 24 - a ete relevee sur cette taille :
+appliquee a une case de 64, la meme fenetre preleve un coin de la creature au lieu
+de la creature. L'ecran indique combien de planches sont masquees.
+
+### Composer un archer
+
+`SOURCE` pose les seize poses d'un coup depuis un personnage. `FRAMES` les ouvre une
+par une. Aucun des deux n'est un mode : qui veut tout choisir a la main ne touche
+jamais a `SOURCE`.
+
+`WINDOW X` et `WINDOW Y` reglent **ou decouper** dans la case source. La meme fenetre
+sert a toutes les poses — une fenetre ajustee pose par pose ferait sautiller le
+personnage au lieu de le faire marcher. Un pixel d'ecart se voit : le personnage
+flotte ou s'enfonce dans le sol, d'ou l'apercu anime a cote.
+
+### Chapeau
+
+Trois emplacements en fin de liste, tous facultatifs : `CHAPEAU`, `CHAPEAU BLEU`,
+`CHAPEAU ROUGE`. Sans image, l'archer part tete nue - c'est ce que faisaient tous les
+archers forges jusqu'ici. Avec, il retrouve le chapeau qui s'envole quand on le
+touche, le seul effet de jeu que les neuf archers du jeu ont tous.
+
+Rien n'est emprunte automatiquement, contrairement a l'arc ou au viseur : un chapeau
+se voit, et celui d'un autre archer se reconnait. Pour reprendre celui du vert, il
+suffit de deposer ses images dans le vivier et de les choisir ici.
+
+Les deux variantes d'equipe sont facultatives elles aussi : sans elles, le chapeau
+normal est reteinte comme le reste du personnage.
+
+L'image est **recadree sur son dessin** et non laissee a la taille de la fenetre de
+decoupe. Le jeu centre le chapeau sur sa propre texture : une image de 24x24 presque
+vide le ferait tourner autour du vide et voler de travers. Les chapeaux du jeu font
+huit pixels sur quatre.
+
+### Costume ALT
+
+Facultatif. `ALT COSTUME OF` rattache un archer forge a un autre : il occupe alors
+**son** emplacement au rollcall et se choisit avec la bascule ALT, au lieu d'ajouter
+une case a la selection.
+
+La chaine ne va pas plus loin que deux : un archer qui a deja un ALT ne peut pas en
+devenir un.
+
+A l'essai, le parent doit etre enregistre en premier — il prete son emplacement.
+
+### Voix
+
+`VOICE` donne une voix de repli parmi celles du jeu, puis vingt-et-une actions —
+`TIR`, `SAUT`, `MORT`, `GLISSADE`... — que l'on peut remplacer une par une avec un
+WAV de la banque des sons. La ligne survolee joue son fichier.
+
+Le repli agit **action par action** : poser un son sur `MORT` ne rend pas l'archer
+muet pour les vingt autres. Un archer sans aucun fichier a deja une voix complete.
+
+### Musique de victoire
+
+`VICTORY MUSIC` propose `AUTO`, les treize pistes du jeu, puis les fichiers deposes
+dans `Saves/Ebe1.Profiles/music` (WAV ou OGG).
+
+`AUTO` fait suivre la voix de repli. Ce n'est pas de la coquetterie : le jeu lit ce
+champ comme une cle de dictionnaire **sans la verifier**, et un archer sans musique
+fait tomber la fin du round. Il y a donc toujours une valeur, meme quand on n'a rien
+choisi.
+
+**Une musique apportee ne s'entend qu'apres export**, et la ligne l'annonce en
+affichant `(EXPORT)`. Une piste doit etre declaree comme ressource de mod pour etre
+jouable, et une ressource se construit a partir d'un contenu de mod que l'essai a
+chaud n'a pas. L'archer essaye gagne donc sur la piste du jeu que `AUTO` aurait
+choisie ; le mod exporte, lui, emporte le fichier dans `Content/Music` et joue la
+bonne.
+
+### Essayer et exporter
+
+`TEST IN GAME` pose l'archer dans la partie en cours. Trois familles de tableaux du
+jeu sont indexees par archer et dimensionnees au chargement — particules, compteurs
+de statistiques, voix : la forge les rallonge, sans quoi le jeu tomberait a la
+premiere esquive, a la premiere mort ou en fin de match. Un archer essaye ne se
+retire pas : il faut redemarrer.
+
+`EXPORT AS MOD` ecrit un vrai mod dans `Mods/Ebe1.Forge.<nom>`, qui passe par le
+chemin de chargement normal et survit a la suppression du dessin.
+
+L'export ne gere pas encore le **costume ALT** : il ecrirait un `<AltArcher>` citant
+des planches absentes du mod, ce qui ferait tomber le chargement. Les deux ou aucun.
 
 ## Touches
 

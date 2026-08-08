@@ -75,6 +75,17 @@ namespace TFModFortRiseProfiles
       addRow.OnConfirmed = AskNewProfile;
       rows.Add(addRow);
 
+      // La forge d'archers s'atteint d'ici et non par une lame du menu principal :
+      // les lames se suivent sans interstice et QUIT touche deja le bas de l'ecran.
+      // Un archer forge n'appartient a aucun profil, mais c'est ici qu'on vient
+      // quand on veut changer de personnage.
+      UIMenuRow forgeRow = MakeRow(rows.Count, "ARCHER FORGE");
+      forgeRow.RightText = () => ForgeStorage.Designs.Count > 0
+          ? ForgeStorage.Designs.Count.ToString()
+          : "";
+      forgeRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeList>();
+      rows.Add(forgeRow);
+
       foreach (ProfileData profile in profiles)
       {
         ProfileData captured = profile;
@@ -190,10 +201,10 @@ namespace TFModFortRiseProfiles
       preview?.Show(null);
 
       // removedIndex compte dans la liste des profils, les lignes ont en plus
-      // "+ NEW PROFILE" en tete. Apres suppression du dernier profil, ce decalage
-      // ramene naturellement le focus sur la ligne qui a pris sa place, ou sur celle
-      // du dessus s'il n'y en a plus.
-      Build(removedIndex + 1);
+      // "+ NEW PROFILE" et "ARCHER FORGE" en tete. Apres suppression du dernier
+      // profil, ce decalage ramene naturellement le focus sur la ligne qui a pris sa
+      // place, ou sur celle du dessus s'il n'y en a plus.
+      Build(removedIndex + 2);
     }
 
     private void Edit(ProfileData profile)

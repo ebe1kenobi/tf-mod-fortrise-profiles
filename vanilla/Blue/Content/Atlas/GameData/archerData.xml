@@ -1,0 +1,67 @@
+<Archers>
+  <Archer id="Blue">
+    <Name0>LAST OF</Name0>
+    <Name1>THE ORDER</Name1>
+    <ColorA>3C9FFC</ColorA>
+    <ColorB>90C7F9</ColorB>
+    <LightbarColor>0000FF</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_blue.png</Aimer>
+    <SFX>1</SFX>
+    <Corpse>@Blue</Corpse>
+    <VictoryMusic>Blue</VictoryMusic>
+    <Gender>Female</Gender>
+    <Sprites>
+      <Body>@PlayerBody1</Body>
+      <HeadNormal>@PlayerHeadNormal1</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat1</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown1</HeadCrown>
+      <Bow>@PlayerBow1</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_blue_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_blue_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_blue_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined1.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined1.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win1.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose1.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_blue.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_blueGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem1</Menu>
+      <Gameplay>@Gem1</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-4" />
+      <DuckingOffset x="10" y="1" />
+      <Interval>150</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="BlueAlt" Alt="@Blue">
+    <Corpse>@Blue_Alt</Corpse>
+    <StartNoHat>True</StartNoHat>
+    <Sprites>
+      <Body>@Blue_Alt</Body>
+      <HeadNormal>@Blue_AltHead</HeadNormal>
+      <HeadNoHat>@Blue_AltHead</HeadNoHat>
+      <HeadCrown>@Blue_AltHeadCrown</HeadCrown>
+      <Bow>@Blue_AltBow</Bow>
+    </Sprites>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt1.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt1.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt1.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt1.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_blueAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_blueAltGlow.png</Glow>
+    </Statue>
+    <StartNoHat>True</StartNoHat>
+  </AltArcher>
+</Archers>

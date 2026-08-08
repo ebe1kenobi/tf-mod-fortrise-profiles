@@ -1,0 +1,70 @@
+<Archers>
+  <Archer id="Cyan">
+    <Name0>PRANCING</Name0>
+    <Name1>PUPPET</Name1>
+    <ColorA>00FFF6</ColorA>
+    <ColorB>6DFFF6</ColorB>
+    <LightbarColor>00FFFF</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_cyan.png</Aimer>
+    <SFX>6</SFX>
+    <Corpse>@Cyan</Corpse>
+    <VictoryMusic>Cyan</VictoryMusic>
+    <Gender>Other</Gender>
+    <Sprites>
+      <Body>@PlayerBody6</Body>
+      <HeadNormal>@PlayerHeadNormal6</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat6</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown6</HeadCrown>
+      <Bow>@PlayerBow6</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_cyan_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_cyan_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_cyan_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined6.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined6.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win6.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose6.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_cyan.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_cyanGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem6</Menu>
+      <Gameplay>@Gem6</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-6" />
+      <DuckingOffset x="10" y="0" />
+      <Interval>100</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="CyanAlt" Alt="@Cyan">
+    <Corpse>@Cyan_Alt</Corpse>
+    <Sprites>
+      <Body>@Cyan_Alt</Body>
+      <HeadNormal>@Cyan_AltHead</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat6</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown6</HeadCrown>
+      <Bow>@Cyan_AltBow</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_cyanAlt_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_cyanAlt_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_cyanAlt_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt6.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt6.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt6.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt6.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_cyanAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_cyanAltGlow.png</Glow>
+    </Statue>
+  </AltArcher>
+</Archers>

@@ -1,0 +1,75 @@
+<Archers>
+  <Archer id="Yellow">
+    <Name0>FORGOTTEN</Name0>
+    <Name1>MASTER</Name1>
+    <ColorA>F2FF00</ColorA>
+    <ColorB>FFFF66</ColorB>
+    <LightbarColor>FFFF00</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_yellow.png</Aimer>
+    <SFX>5</SFX>
+    <Corpse>@Yellow</Corpse>
+    <VictoryMusic>Yellow</VictoryMusic>
+    <SleepHeadFrame>6</SleepHeadFrame>
+    <Gender>Male</Gender>
+    <Sprites>
+      <Body>@PlayerBody5</Body>
+      <HeadNormal>@PlayerHeadNormal5</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat5</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown5</HeadCrown>
+      <Bow>@PlayerBow5</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_yellow_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_yellow_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_yellow_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined5.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined5.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win5.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose5.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_yellow.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_yellowGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem5</Menu>
+      <Gameplay>@Gem5</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-3" />
+      <DuckingOffset x="10" y="2" />
+      <Interval>200</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="YellowAlt" Alt="@Yellow">
+    <Name0>YOUNG</Name0>
+    <Name1>MASTER</Name1>
+    <Corpse>@Yellow_Alt</Corpse>
+    <SFX>9</SFX>
+    <SleepHeadFrame>5</SleepHeadFrame>
+    <Sprites>
+      <Body>@Yellow_Alt</Body>
+      <HeadNormal>@Yellow_AltHead</HeadNormal>
+      <HeadNoHat>@Yellow_AltNoHat</HeadNoHat>
+      <HeadCrown>@Yellow_AltCrown</HeadCrown>
+      <Bow>@PlayerBow5</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_yellow_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_yellow_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_yellow_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt5.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt5.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt5.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt5.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_yellowAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_yellowAltGlow.png</Glow>
+    </Statue>
+  </AltArcher>
+</Archers>

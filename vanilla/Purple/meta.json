@@ -1,0 +1,10 @@
+﻿{
+    "author":  "ebe1.kenobi",
+    "description":  "L\u0027archer Purple du jeu, extrait comme base de travail. Usage personnel.",
+    "name":  "VanillaPurple",
+    "version":  "0.1.0",
+    "dependencies":  [
+                         "FortRise:5.3.0",
+                         "FortRise.Content:5.3.0"
+                     ]
+}

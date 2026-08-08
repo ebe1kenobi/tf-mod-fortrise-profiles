@@ -1,0 +1,18 @@
+<SpriteData>
+  <sprite_string id="Blue">
+    <Texture>Content/Atlas/sprites/corpses/corpses_blue_normal.png</Texture>
+    <BlueTeam>Content/Atlas/sprites/corpses/corpses_blue_blueTeam.png</BlueTeam>
+    <RedTeam>Content/Atlas/sprites/corpses/corpses_blue_redTeam.png</RedTeam>
+    <Flash>Content/Atlas/sprites/corpses/corpses_blue_flash.png</Flash>
+    <FrameWidth>12</FrameWidth>
+    <FrameHeight>20</FrameHeight>
+    <Animations>
+      <Anim id="ground" frames="0" />
+      <Anim id="fall" frames="1" />
+      <Anim id="pinned" frames="2" />
+      <Anim id="slouched" frames="3" />
+      <Anim id="flying" frames="4" />
+      <Anim id="ledge" frames="5" />
+    </Animations>
+  </sprite_string>
+</SpriteData>

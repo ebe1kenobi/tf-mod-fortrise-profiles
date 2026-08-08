@@ -1,0 +1,74 @@
+<Archers>
+  <Archer id="Green">
+    <Name0>VIGILANTE</Name0>
+    <Name1>THIEF</Name1>
+    <ColorA>00B800</ColorA>
+    <ColorB>45E045</ColorB>
+    <LightbarColor>008000</LightbarColor>
+    <Aimer>Content/Atlas/sprites/aimers/aimers_green.png</Aimer>
+    <SFX>0</SFX>
+    <Corpse>@Green</Corpse>
+    <VictoryMusic>Green</VictoryMusic>
+    <Gender>Female</Gender>
+    <Sprites>
+      <Body>@PlayerBody0</Body>
+      <HeadNormal>@PlayerHeadNormal0</HeadNormal>
+      <HeadNoHat>@PlayerHeadNoHat0</HeadNoHat>
+      <HeadCrown>@PlayerHeadCrown0</HeadCrown>
+      <Bow>@PlayerBow0</Bow>
+    </Sprites>
+    <Hat>
+      <Normal>Content/Atlas/sprites/hat/player_hat_green_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_green_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_green_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoined0.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joined0.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_win0.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_lose0.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_green.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_greenGlow.png</Glow>
+    </Statue>
+    <Gems>
+      <Menu>@Gem0</Menu>
+      <Gameplay>@Gem0</Gameplay>
+    </Gems>
+    <Breathing>
+      <Offset x="10" y="-6" />
+      <DuckingOffset x="10" y="0" />
+      <Interval>120</Interval>
+    </Breathing>
+  </Archer>
+  <AltArcher id="GreenAlt" Alt="@Green">
+    <Name0>VIGILANTE</Name0>
+    <Name1>MASK</Name1>
+    <Corpse>@Green_Alt</Corpse>
+    <SFX>10</SFX>
+    <Sprites>
+      <Body>@Green_Alt</Body>
+      <HeadNormal>@Green_AltHead</HeadNormal>
+      <HeadNoHat>@Green_AltNoHat</HeadNoHat>
+      <HeadCrown>@Green_AltCrown</HeadCrown>
+      <Bow>@Green_AltBow</Bow>
+    </Sprites>
+    <Hat>
+      <Material>Wood</Material>
+      <Normal>Content/Atlas/sprites/hat/player_hat_greenAlt_normal.png</Normal>
+      <Blue>Content/Atlas/sprites/hat/player_hat_greenAlt_blue.png</Blue>
+      <Red>Content/Atlas/sprites/hat/player_hat_greenAlt_red.png</Red>
+    </Hat>
+    <Portraits>
+      <NotJoined>Content/Atlas/sprites/portraits/portraits_notJoinedAlt0.png</NotJoined>
+      <Joined>Content/Atlas/sprites/portraits/portraits_joinedAlt0.png</Joined>
+      <Win>Content/Atlas/sprites/portraits/portraits_winAlt0.png</Win>
+      <Lose>Content/Atlas/sprites/portraits/portraits_loseAlt0.png</Lose>
+    </Portraits>
+    <Statue>
+      <Image>Content/Atlas/sprites/statues/player_statues_greenAlt.png</Image>
+      <Glow>Content/Atlas/sprites/statues/player_statues_greenAltGlow.png</Glow>
+    </Statue>
+  </AltArcher>
+</Archers>

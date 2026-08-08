@@ -72,6 +72,24 @@ namespace TFModFortRiseProfiles
       context.Registry.MenuStates.RegisterMenuState("ProfileImagePicker",
           new MenuStateConfiguration { MenuStateType = typeof(UIProfileImagePicker) });
 
+      // La forge d'archers. Cinq ecrans, atteints depuis la liste des profils : le
+      // menu principal n'a plus de place pour une lame, ses lames se suivent sans
+      // interstice et QUIT touche deja le bas de l'ecran.
+      context.Registry.MenuStates.RegisterMenuState("ForgeList",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeList) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeEdit",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeEdit) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeSource",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeSource) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeFrames",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeFrames) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeFramePicker",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeFramePicker) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeVoice",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeVoice) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeVoicePicker",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeVoicePicker) });
+
       foreach (var hookable in Hookables)
       {
         hookable.GetMethod(nameof(IHookable.Load))!.Invoke(null, [context.Harmony]);

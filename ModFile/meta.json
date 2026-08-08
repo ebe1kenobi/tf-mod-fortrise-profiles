@@ -1,6 +1,6 @@
 ﻿{
 	"name": "Ebe1.Profiles",
-	"version": "1.16.0",
+	"version": "1.22.2",
 	"author": "ebe1.kenobi",
 	"description": "Player profiles: name, favourite archer and costume",
 	"dll": "TFModFortRiseProfiles.dll",
