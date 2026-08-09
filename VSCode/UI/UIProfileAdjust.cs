@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
@@ -28,9 +28,9 @@ namespace TFModFortRiseProfiles
     private const float HueStep = 5f;
     private static readonly Vector2 PreviewPosition = new Vector2(250f, 120f);
 
-    private ProfileData profile;
+    private IColorSubject subject;
     private ColorTrial trial;
-    private UISpritePreview preview;
+    private ColorPreview preview;
 
     public UIProfileAdjust(MainMenu main) : base(main)
     {
@@ -38,12 +38,12 @@ namespace TFModFortRiseProfiles
 
     public override void Create()
     {
-      profile = UIProfilesMenu.Editing;
-      trial = ProfileTrials.Active(profile);
+      subject = ColorEditing.Subject;
+      trial = subject?.Trial;
 
-      if (profile == null || trial == null)
+      if (trial == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfileTrials>();
+        Main.State = ColorEditing.BackState;
         return;
       }
 
@@ -51,9 +51,9 @@ namespace TFModFortRiseProfiles
       Main.BackState = ModRegisters.MenuState<UIProfileColorGroups>();
       Main.TweenBGCameraToY(2);
 
-      preview = new UISpritePreview(PreviewPosition);
-      Main.Add(preview);
-      preview.Rebuild(profile);
+      preview = ColorPreview.For(subject, PreviewPosition);
+      Main.Add(preview.Item);
+      preview.Rebuild();
 
       var rows = new List<UIMenuRow>
       {
@@ -102,8 +102,7 @@ namespace TFModFortRiseProfiles
 
     public override void Destroy()
     {
-      SpriteRecolor.Export(profile);
-      ProfileStorage.Save();
+      ColorPreview.Persist(subject);
     }
 
     private UIMenuRow MakeRow(int index, string label)
@@ -147,8 +146,8 @@ namespace TFModFortRiseProfiles
 
     private void Apply()
     {
-      SpriteRecolor.Invalidate(profile);
-      preview?.Rebuild(profile);
+      subject.Invalidate();
+      preview?.Rebuild();
     }
   }
 }

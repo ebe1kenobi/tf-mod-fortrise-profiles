@@ -163,6 +163,12 @@ namespace TFModFortRiseProfiles
     private void Open(ColorTrial trial)
     {
       ProfileTrials.SetActive(profile, trial);
+
+      // Les ecrans de couleur servent aussi a la forge : c'est la porte d'entree qui
+      // dit sur quoi ils travaillent et ou ils ramenent. Voir ColorEditing.
+      ColorEditing.Subject = new ProfileColorSubject(profile, trial);
+      ColorEditing.BackState = ModRegisters.MenuState<UIProfileTrials>();
+
       Main.State = ModRegisters.MenuState<UIProfileColorGroups>();
     }
 

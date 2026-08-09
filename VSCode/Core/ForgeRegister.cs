@@ -117,7 +117,7 @@ namespace TFModFortRiseProfiles
         // --- sprites ---
 
         ISpriteContainerEntry bodySprite = registry.Sprites.RegisterSprite(
-            name, BodyConfig(body, bodyRed, bodyBlue));
+            name, BodyConfig(body, bodyRed, bodyBlue, art.HasHead));
 
         ISpriteContainerEntry headSprite = registry.Sprites.RegisterSprite(
             name + "Head", HeadConfig(head));
@@ -462,7 +462,7 @@ namespace TFModFortRiseProfiles
     }
 
     private static SpriteConfiguration<string> BodyConfig(
-        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue)
+        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, bool hasHead)
     {
       return new SpriteConfiguration<string>
       {
@@ -479,12 +479,17 @@ namespace TFModFortRiseProfiles
         // Obligatoire, et indexe sans borne par l'image courante du corps. Voir
         // ForgeSlots.HeadYOrigins : un tableau trop court fait tomber le jeu en plein
         // match, pas au chargement.
-        HeadYOrigins = ForgeSlots.HeadYOrigins(),
+        HeadYOrigins = ForgeSlots.HeadYOrigins(hasHead),
 
         // La tete est dessinee dans le corps : la masquer pendant la glissade
         // d'esquive evite d'en poser une seconde par-dessus. C'est ce que font les
         // archers du jeu dont le corps porte deja la tete.
-        AdditionalData = new Dictionary<string, object> { { "SlideHead", "False" } },
+        AdditionalData = new Dictionary<string, object>
+        {
+          // Masquer la tete pendant la glissade n'a de sens que si le corps la porte
+          // deja. Un dessin qui fournit sa propre tete la perdrait a chaque esquive.
+          { "SlideHead", hasHead ? "True" : "False" }
+        },
 
         Animations = new[]
         {
@@ -504,10 +509,19 @@ namespace TFModFortRiseProfiles
     }
 
     /// <summary>
-    /// La tete, vide.
+    /// La tete : cinq images, ou du vide si le dessin n'en fournit pas.
     ///
     /// Le jeu exige les treize animations meme pointant toutes sur du vide : sans
     /// elles le sprite ne se construit pas, et l'archer tombe a l'apparition.
+    ///
+    /// Meme cadre que le corps, 24x24, et non les 10x10 des archers d'origine. Les
+    /// images de tete se choisissent dans le vivier par la meme fenetre de decoupe que
+    /// les poses : les cadrer autrement obligerait a un second reglage de fenetre, et
+    /// a deviner ou la tete se trouve dans une planche qu'on ne connait pas.
+    ///
+    /// OriginY est sans effet : Player l'ecrase a chaque image avec
+    /// <c>headYOrigins[bodySprite.CurrentFrame]</c>. C'est donc ce tableau, et lui
+    /// seul, qui decide de la hauteur de la tete - voir ForgeSlots.HeadYOrigins.
     /// </summary>
     private static SpriteConfiguration<string> HeadConfig(ISubtextureEntry texture)
     {
@@ -516,12 +530,12 @@ namespace TFModFortRiseProfiles
         Texture = texture,
         RedTexture = texture,
         BlueTexture = texture,
-        FrameWidth = 10,
-        FrameHeight = 10,
-        OriginX = 6,
-        OriginY = 0,
+        FrameWidth = ForgeSlots.Frame,
+        FrameHeight = ForgeSlots.Frame,
+        OriginX = 14,
+        OriginY = ForgeSlots.Frame,
         X = 0,
-        Y = 7,
+        Y = 8,
         Animations = new[]
         {
           Anim("idle", 0), Anim("lookUp", 1), Anim("lookDown", 2), Anim("lookBack", 3),

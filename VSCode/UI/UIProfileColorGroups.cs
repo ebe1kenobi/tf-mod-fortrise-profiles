@@ -28,8 +28,8 @@ namespace TFModFortRiseProfiles
     private const float ContentWidth = 108f;
     private static readonly Vector2 PreviewPosition = new Vector2(250f, 120f);
 
-    private ProfileData profile;
-    private UISpritePreview preview;
+    private IColorSubject subject;
+    private ColorPreview preview;
 
     private ColorTrial trial;
     private readonly List<MenuItem> rows = new List<MenuItem>();
@@ -40,47 +40,39 @@ namespace TFModFortRiseProfiles
 
     public override void Create()
     {
-      profile = UIProfilesMenu.Editing;
-      if (profile == null)
+      subject = ColorEditing.Subject;
+
+      if (subject == null || subject.Trial == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+        Main.State = ColorEditing.BackState;
         return;
       }
 
-      trial = ProfileTrials.Active(profile);
-
-      if (trial == null)
-
-      {
-
-        // Aucun essai retenu : c'est la liste qui doit s'ouvrir, pas l'editeur.
-
-        Main.State = ModRegisters.MenuState<UIProfileTrials>();
-
-        return;
-
-      }
+      trial = subject.Trial;
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileColorGroups>());
-      Main.BackState = ModRegisters.MenuState<UIProfileTrials>();
+      Main.BackState = ColorEditing.BackState;
       Main.TweenBGCameraToY(2);
 
       // Les profils d'avant la recoloration par partie portent des remplacements
       // globaux : on les rend explicites avant d'editer, sinon la premiere retouche
-      // deplacerait des teintes sur des parties non selectionnees.
-      SpriteRecolor.MakePartsExplicit(profile);
+      // deplacerait des teintes sur des parties non selectionnees. Sans objet pour un
+      // archer forge, dont la table n'a jamais eu de forme globale.
+      if (subject is ProfileColorSubject legacy)
+      {
+        SpriteRecolor.MakePartsExplicit(legacy.Profile);
+      }
 
-      preview = new UISpritePreview(PreviewPosition);
-      Main.Add(preview);
-      preview.Rebuild(profile);
+      preview = ColorPreview.For(subject, PreviewPosition);
+      Main.Add(preview.Item);
+      preview.Rebuild();
 
       Build(0);
     }
 
     public override void Destroy()
     {
-      SpriteRecolor.Export(profile);
-      ProfileStorage.Save();
+      ColorPreview.Persist(subject);
       rows.Clear();
     }
 
@@ -100,14 +92,15 @@ namespace TFModFortRiseProfiles
 
       items.Add(adjustRow);
 
-      items.AddRange(UIColorPartRows.Build(FirstRowY + 2f * RowStep, RowStep, RowX, ContentWidth, () => Rebuild(0)));
+      items.AddRange(UIColorPartRows.Build(
+          FirstRowY + 2f * RowStep, RowStep, RowX, ContentWidth, () => Rebuild(0), subject.Groups));
 
       int firstFamilyRow = items.Count;
-      List<string> parts = ColorSelection.Parts();
+      List<string> parts = ColorSelection.Parts(subject);
 
       if (parts.Count > 0)
       {
-        List<ColorFamily> families = ColorFamilies.Group(SpriteRecolor.Palette(profile, parts));
+        List<ColorFamily> families = ColorFamilies.Group(ColorPreview.Palette(subject, parts));
         int shown = Math.Min(families.Count, MaxFamilies);
 
         for (int i = 0; i < shown; i++)
@@ -288,8 +281,8 @@ namespace TFModFortRiseProfiles
 
     private void Apply()
     {
-      SpriteRecolor.Invalidate(profile);
-      preview?.Rebuild(profile);
+      subject.Invalidate();
+      preview?.Rebuild();
     }
   }
 }

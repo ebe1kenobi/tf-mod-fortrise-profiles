@@ -56,6 +56,9 @@ namespace TFModFortRiseProfiles
     /// <summary>Tetes vides. Le personnage porte la sienne dans son corps.</summary>
     public ForgeImage Head;
 
+    /// <summary>Vrai si des images de tete ont ete choisies, donc si elle doit s'afficher.</summary>
+    public bool HasHead;
+
     public ForgeImage Statue;
     public ForgeImage PortraitJoined;
     public ForgeImage PortraitNotJoined;
@@ -139,9 +142,18 @@ namespace TFModFortRiseProfiles
         art.CorpseBlue = Tinted(art.Corpse, BlueHue);
         art.CorpseFlash = Silhouette(art.Corpse);
 
-        // Le jeu exige les treize animations de tete, meme pointant toutes sur du
-        // vide. Cinq images de 10x10 suffisent a les porter.
-        art.Head = new ForgeImage(50, 10);
+        // La tete n'est assemblee que si des images lui ont ete choisies.
+        //
+        // Une planche Broforce dessine deja la tete dans le corps : lui en poser une
+        // seconde par-dessus donnerait deux tetes. D'autres sources la separent, et
+        // c'est pour celles-la que ces emplacements existent. Sans image, on garde la
+        // planche vide d'avant - le jeu exige les treize animations meme pointant
+        // toutes sur du vide.
+        art.HasHead = design.PickOf("head_idle") != null;
+
+        art.Head = art.HasHead
+            ? Assemble(design, ForgeSheet.Head, fallback, art.Substituted)
+            : new ForgeImage(ForgeSlots.Head.Length * ForgeSlots.Frame, ForgeSlots.Frame);
 
         ForgeImage idle = FirstFrame(art.Body);
         art.Statue = Statue(idle);
@@ -180,14 +192,77 @@ namespace TFModFortRiseProfiles
       try
       {
         Color[] fallback = ReadPose(design, "stand");
-        return fallback == null
-            ? null
-            : Assemble(design, ForgeSheet.Body, fallback, substituted ?? new List<string>());
+
+        if (fallback == null)
+        {
+          return null;
+        }
+
+        ForgeImage strip = Assemble(
+            design, ForgeSheet.Body, fallback, substituted ?? new List<string>());
+
+        OverlayHead(strip, design);
+        return strip;
       }
       catch (Exception e)
       {
         Log.Error($"[Forge] apercu du corps impossible : {e.Message}");
         return null;
+      }
+    }
+
+    /// <summary>
+    /// Pose la tete au repos sur chaque image du corps, pour le seul apercu.
+    ///
+    /// En jeu la tete est un sprite a part : le moteur la place lui-meme au-dessus du
+    /// corps, image par image, et la fabrication les livre donc separement. L'apercu,
+    /// lui, ne deroule qu'une planche - sans ce report, une tete choisie n'apparait
+    /// nulle part avant d'essayer l'archer en jeu, et l'on ne peut ni la cadrer ni la
+    /// recolorer en la voyant.
+    ///
+    /// Toujours l'image au repos : les quatre autres suivent la visee, qui n'a pas de
+    /// sens dans un apercu qui se contente de derouler les poses du corps.
+    ///
+    /// La superposition est directe parce que la tete est cadree comme le corps, dans
+    /// la meme fenetre, et que HeadYOrigins vaut alors Frame - le jeu les empile donc
+    /// exactement de la meme facon. Voir ForgeSlots.HeadYOrigins.
+    /// </summary>
+    private static void OverlayHead(ForgeImage strip, ForgeDesign design)
+    {
+      if (strip == null || design.PickOf("head_idle") == null)
+      {
+        return;
+      }
+
+      Color[] head = ReadPose(design, "head_idle");
+
+      if (head == null)
+      {
+        return;
+      }
+
+      // La tete porte ses propres remplacements : sans ce passage, l'apercu la
+      // montrerait dans ses couleurs d'origine alors que le corps est deja recolore.
+      head = (Color[])head.Clone();
+      ColorPalette.Apply(
+          head, ColorPalette.SwapMap(design.Colors, SpritePartGroups.Head), design.Colors);
+
+      int size = ForgeSlots.Frame;
+
+      for (int left = 0; left + size <= strip.Width; left += size)
+      {
+        for (int y = 0; y < size; y++)
+        {
+          for (int x = 0; x < size; x++)
+          {
+            Color pixel = head[y * size + x];
+
+            if (pixel.A != 0)
+            {
+              strip[left + x, y] = pixel;
+            }
+          }
+        }
       }
     }
 
@@ -325,6 +400,11 @@ namespace TFModFortRiseProfiles
       int size = ForgeSlots.Frame;
       var strip = new ForgeImage(slots.Length * size, size);
 
+      // La table de remplacement est calculee une fois par planche et non par pose :
+      // toutes les poses d'une planche partagent la meme famille de couleurs.
+      Dictionary<uint, Color> swaps =
+          ColorPalette.SwapMap(design.Colors, ForgeColorSubject.GroupOf(sheet));
+
       foreach (ForgeSlot slot in slots)
       {
         Color[] pose = ReadPose(design, slot.Key);
@@ -334,6 +414,12 @@ namespace TFModFortRiseProfiles
           pose = fallback;
           substituted.Add(slot.Key);
         }
+
+        // Recopie avant recoloration : Apply travaille en place, et la pose de repli
+        // est le MEME tableau pour tous les emplacements manquants. La recolorer sur
+        // place lui appliquerait les reglages autant de fois qu'elle comble de trous.
+        pose = (Color[])pose.Clone();
+        ColorPalette.Apply(pose, swaps, design.Colors);
 
         int left = slot.Index * size;
 

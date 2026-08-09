@@ -116,6 +116,18 @@ namespace TFModFortRiseProfiles
     public int WindowY { get; set; } = ForgeSlots.WindowY;
 
     /// <summary>
+    /// Recoloration des planches venues du vivier : remplacements et reglages.
+    ///
+    /// Un seul essai et non une liste nommee comme chez les profils. Les essais y
+    /// existent parce qu'un profil change d'archer et que leurs cles sont les teintes
+    /// d'origine de CE sprite ; un archer forge n'en a qu'un, le sien, et une liste
+    /// n'ajouterait qu'un ecran a traverser.
+    ///
+    /// Ne touche pas les pieces reprises au jeu, qui gardent <see cref="Hue"/>.
+    /// </summary>
+    public ColorTrial Colors { get; set; } = new ColorTrial();
+
+    /// <summary>
     /// Teinte appliquee aux pieces reprises du jeu - arc, viseur, ailes, gemmes -
     /// en degres. Broforce n'a pas d'arc, et un arc vert sur un archer brun se
     /// verrait immediatement.

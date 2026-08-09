@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace TFModFortRiseProfiles
 {
@@ -12,7 +12,10 @@ namespace TFModFortRiseProfiles
     /// Le chapeau qui s'envole. Ce n'est pas une planche mais trois images
     /// independantes, une par camp.
     /// </summary>
-    Hat
+    Hat,
+
+    /// <summary>Tete posee par-dessus le corps. Facultative : voir ForgeSlots.Head.</summary>
+    Head
   }
 
   /// <summary>Un emplacement a remplir, et sa place dans la planche assemblee.</summary>
@@ -116,7 +119,28 @@ namespace TFModFortRiseProfiles
       new ForgeSlot("hat_red", ForgeSheet.Hat, 2, "CHAPEAU ROUGE")
     };
 
-    public static readonly ForgeSlot[] All = Concat(Concat(Body, Corpse), Hat);
+    /// <summary>
+    /// Les cinq images de tete, dans l'ordre ou le sprite les indexe.
+    ///
+    /// Facultatives, et c'est tout l'interet : une planche Broforce dessine deja la
+    /// tete dans le corps, et un archer forge a partir d'elle n'en veut pas une
+    /// seconde. D'autres sources la separent, et sans ces emplacements il n'y avait
+    /// aucun moyen de s'en servir - la tete etait cablee vide.
+    ///
+    /// Cinq et non treize : le sprite declare treize animations, mais elles pointent
+    /// toutes sur ces cinq images. Regarder en haut en tombant et regarder en haut en
+    /// sautant sont la meme image.
+    /// </summary>
+    public static readonly ForgeSlot[] Head =
+    {
+      new ForgeSlot("head_idle", ForgeSheet.Head, 0, "TETE"),
+      new ForgeSlot("head_up", ForgeSheet.Head, 1, "TETE HAUT"),
+      new ForgeSlot("head_down", ForgeSheet.Head, 2, "TETE BAS"),
+      new ForgeSlot("head_back", ForgeSheet.Head, 3, "TETE ARRIERE"),
+      new ForgeSlot("head_duck", ForgeSheet.Head, 4, "TETE ACCROUPI")
+    };
+
+    public static readonly ForgeSlot[] All = Concat(Concat(Concat(Body, Corpse), Hat), Head);
 
     /// <summary>
     /// Hauteur a laquelle le jeu accroche la tete, une valeur par image du corps.
@@ -137,11 +161,20 @@ namespace TFModFortRiseProfiles
     /// D'ou ce calcul plutot qu'une liste ecrite en dur a deux endroits : ajouter une
     /// pose au corps allonge le tableau tout seul.
     /// </summary>
-    public static int[] HeadYOrigins()
+    /// <param name="hasHead">
+    /// Vrai si le dessin fournit ses propres images de tete. Elles sont cadrees comme
+    /// les poses du corps, dans la meme fenetre : pour qu'elles se superposent
+    /// exactement, l'origine de la tete doit valoir celle du corps - Frame - et non la
+    /// hauteur relevee d'une nuque. Les autres dessins gardent les mesures, qui n'y
+    /// servent qu'a poser la couronne.
+    /// </param>
+    public static int[] HeadYOrigins(bool hasHead = false)
     {
       // Mesures relevees sur les planches Broforce assemblees : la tete y est deja
       // dessinee dans le corps, ces valeurs ne servent donc qu'a poser la couronne.
-      int[] measured = { 21, 21, 20, 21, 23, 21, 21, 18, 21, 18 };
+      int[] measured = hasHead
+          ? new[] { Frame }
+          : new[] { 21, 21, 20, 21, 23, 21, 21, 18, 21, 18 };
 
       var origins = new int[Body.Length];
 
@@ -171,6 +204,7 @@ namespace TFModFortRiseProfiles
       {
         ForgeSheet.Body => Body,
         ForgeSheet.Hat => Hat,
+        ForgeSheet.Head => Head,
         _ => Corpse
       };
     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
@@ -74,7 +74,11 @@ namespace TFModFortRiseProfiles
       {
         (ForgeSheet.Body, "-- CORPS --"),
         (ForgeSheet.Corpse, "-- CADAVRE --"),
-        (ForgeSheet.Hat, "-- CHAPEAU --")
+        (ForgeSheet.Hat, "-- CHAPEAU --"),
+
+        // Facultative, et posee en dernier pour cette raison : une planche qui dessine
+        // deja la tete dans le corps n'en veut pas une seconde.
+        (ForgeSheet.Head, "-- TETE (FACULTATIF) --")
       };
 
       foreach (var group in groups)

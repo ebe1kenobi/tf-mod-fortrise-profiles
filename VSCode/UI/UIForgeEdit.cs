@@ -114,6 +114,14 @@ namespace TFModFortRiseProfiles
       framesRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeFrames>();
       rows.Add(framesRow);
 
+      // Les memes ecrans que les profils, sur un autre sujet. Poses juste apres les
+      // poses : on recolore ce qu'on vient de composer, et une palette relevee sur un
+      // archer a moitie rempli n'aurait pas ses vraies couleurs.
+      UIMenuRow colorsRow = MakeRow(rows.Count, "COLORS");
+      colorsRow.RightText = ColorsLabel;
+      colorsRow.OnConfirmed = OpenColors;
+      rows.Add(colorsRow);
+
       // La fenetre de decoupe se regle ici et non dans l'ecran des poses : elle vaut
       // pour toutes a la fois, et c'est en regardant la course qu'on voit qu'elle est
       // d'un pixel trop haut - donc en ayant l'apercu sous les yeux.
@@ -216,6 +224,44 @@ namespace TFModFortRiseProfiles
     }
 
     // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Ouvre les ecrans de couleur sur cet archer.
+    ///
+    /// Ce sont ceux des profils, sans copie : la porte d'entree pose le sujet et
+    /// l'ecran de retour, le reste est commun. Voir ColorEditing.
+    ///
+    /// On entre par les familles et non par le detail couleur par couleur, comme les
+    /// profils : regler une famille touche les teintes voisines d'un coup, ce qui est
+    /// ce qu'on veut au premier passage.
+    /// </summary>
+    private void OpenColors()
+    {
+      ColorEditing.Subject = new ForgeColorSubject(design);
+      ColorEditing.BackState = ModRegisters.MenuState<UIForgeEdit>();
+
+      Main.State = ModRegisters.MenuState<UIProfileColorGroups>();
+    }
+
+    /// <summary>Ce que porte la ligne COLORS : de quoi voir si quelque chose est regle.</summary>
+    private string ColorsLabel()
+    {
+      ColorTrial colors = design.Colors;
+
+      if (colors == null || colors.IsEmpty)
+      {
+        return "NONE";
+      }
+
+      int swaps = colors.Palette?.Count ?? 0;
+
+      if (swaps == 0)
+      {
+        return "ADJUSTED";
+      }
+
+      return swaps + (colors.HasAdjustments ? " + ADJ" : "");
+    }
 
     private string FramesLabel()
     {

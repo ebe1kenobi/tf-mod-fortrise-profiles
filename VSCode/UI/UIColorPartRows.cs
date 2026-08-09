@@ -21,11 +21,18 @@ namespace TFModFortRiseProfiles
     /// Appele apres chaque bascule : l'ecran doit se reconstruire, la palette ne
     /// portant plus sur les memes planches.
     /// </param>
-    public static List<UIMenuRow> Build(float firstY, float step, float x, float contentWidth, Action onChanged)
+    /// <param name="groups">
+    /// Les familles a proposer. Elles viennent du sujet et non de la liste complete :
+    /// un archer forge n'a ni tete separee ni arc a lui, et ces cases y resteraient
+    /// sans effet - une case qui ne fait rien est pire qu'une case absente.
+    /// </param>
+    public static List<UIMenuRow> Build(
+        float firstY, float step, float x, float contentWidth, Action onChanged,
+        IReadOnlyList<string> groups)
     {
       var rows = new List<UIMenuRow>();
 
-      foreach (string group in SpritePartGroups.All)
+      foreach (string group in groups)
       {
         string captured = group;
         float y = firstY + rows.Count * step;

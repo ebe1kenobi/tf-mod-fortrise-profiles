@@ -79,19 +79,32 @@ namespace TFModFortRiseProfiles
       }
     }
 
-    /// <summary>Les planches concernees par la selection courante.</summary>
-    public static List<string> Parts()
+    /// <summary>
+    /// Les planches concernees par la selection courante, chez ce sujet.
+    ///
+    /// C'est le sujet qui dit quelles familles existent et ce qu'elles recouvrent :
+    /// une famille cochee mais absente de son vocabulaire est ignoree. Sans cela, une
+    /// selection heritee de l'ecran des profils ferait chercher a la forge des
+    /// planches qu'elle n'a pas - la selection est volontairement partagee entre les
+    /// ecrans, elle traverse donc aussi les sujets.
+    /// </summary>
+    public static List<string> Parts(IColorSubject subject)
     {
       var parts = new List<string>();
 
-      foreach (string group in SpritePartGroups.All)
+      if (subject == null)
+      {
+        return parts;
+      }
+
+      foreach (string group in subject.Groups)
       {
         if (!selected.Contains(group))
         {
           continue;
         }
 
-        foreach (string part in SpritePartGroups.PartsOf(group))
+        foreach (string part in subject.PartsOf(group))
         {
           parts.Add(part);
         }

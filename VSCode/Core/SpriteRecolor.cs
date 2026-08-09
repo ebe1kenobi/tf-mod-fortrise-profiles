@@ -176,41 +176,24 @@ namespace TFModFortRiseProfiles
         return cached;
       }
 
-      var counts = new Dictionary<uint, int>();
-      ArcherData archer = ArcherCatalog.DataOf(profile);
+      // Le relevé lui-meme ne connait pas les profils : voir ColorPalette.Of, que la
+      // forge emploie sur des planches qui ne viennent pas de l'atlas.
+      var sources = new List<Color[]>();
 
       foreach (string part in parts)
       {
-        Color[] pixels = ReadPixels(SourceOf(archer, part));
-        if (pixels == null)
-        {
-          continue;
-        }
-
-        foreach (Color pixel in pixels)
-        {
-          // Les pixels transparents ne sont pas une couleur du personnage : les
-          // compter remplirait la palette d'une entree vide et dominante.
-          if (pixel.A == 0)
-          {
-            continue;
-          }
-
-          uint packed = pixel.PackedValue;
-          counts.TryGetValue(packed, out int count);
-          counts[packed] = count + 1;
-        }
+        sources.Add(SourcePixels(profile, part));
       }
 
-      var palette = new List<PaletteColor>(counts.Count);
-      foreach (var pair in counts)
-      {
-        palette.Add(new PaletteColor { Source = new Color { PackedValue = pair.Key }, Count = pair.Value });
-      }
-
-      palette.Sort((a, b) => b.Count.CompareTo(a.Count));
+      List<PaletteColor> palette = ColorPalette.Of(sources);
       palettes[key] = palette;
       return palette;
+    }
+
+    /// <summary>Pixels d'origine d'une planche de l'archer, avant tout remplacement.</summary>
+    public static Color[] SourcePixels(ProfileData profile, string part)
+    {
+      return ReadPixels(SourceOf(ArcherCatalog.DataOf(profile), part));
     }
 
     private static Color[] ReadPixels(Subtexture subtexture)
