@@ -34,6 +34,15 @@ namespace TFModFortRiseProfiles
     /// <summary>Action que le selecteur de fichier doit remplir.</summary>
     internal static string EditingAction;
 
+    /// <summary>
+    /// Ligne ou revenir en rouvrant l'ecran.
+    ///
+    /// Vingt et une actions, dont chacune se remplit en passant par le selecteur de
+    /// fichier : revenir en tete apres chaque assignation ferait redescendre la liste
+    /// vingt fois pour donner une voix complete.
+    /// </summary>
+    private static int resume;
+
     public UIForgeVoice(MainMenu main) : base(main)
     {
     }
@@ -94,7 +103,7 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
-      Main.ToStartSelected = rows[0];
+      Main.ToStartSelected = rows[Math.Clamp(resume, 0, rows.Count - 1)];
     }
 
     public override void Destroy()
@@ -106,7 +115,11 @@ namespace TFModFortRiseProfiles
     {
       float y = FirstRowY + index * RowStep;
       var from = new Vector2(index % 2 == 0 ? -200f : 520f, y);
-      return new UIMenuRow(new Vector2(RowX, y), from, label);
+
+      return new UIMenuRow(new Vector2(RowX, y), from, label)
+      {
+        OnSelected = () => resume = index
+      };
     }
 
     // ------------------------------------------------------------------

@@ -23,6 +23,17 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public class UIForgeFramePicker : CustomMenuState
   {
+    /// <summary>
+    /// Vrai si l'ecran a ete ouvert depuis les calques, et doit y ramener.
+    ///
+    /// Le selecteur a deux portes d'entree qui ne veulent pas la meme sortie :
+    /// ressortir sur la liste des poses apres avoir ajoute un calque ferait perdre le
+    /// reglage en cours, et obligerait a redescendre pour y revenir. Un booleen
+    /// statique plutot qu'un etat passe en parametre : CustomMenuState est construit
+    /// par le jeu, on ne lui transmet rien.
+    /// </summary>
+    internal static bool ReturnToLayers;
+
     private const float FirstRowY = 52f;
     private const float RowStep = 15f;
     private const float RowX = 30f;
@@ -31,7 +42,6 @@ namespace TFModFortRiseProfiles
     private ForgeDesign design;
     private ForgeSlot slot;
     private UIForgeCellPreview thumb;
-    private UIForgeBackWatcher watcher;
 
     private readonly List<MenuItem> rows = new List<MenuItem>();
 
@@ -42,21 +52,35 @@ namespace TFModFortRiseProfiles
     {
     }
 
+    /// <summary>L'ecran d'ou l'on vient, donc celui ou toute sortie ramene.</summary>
+    private MainMenu.MenuState Home =>
+        ReturnToLayers
+            ? ModRegisters.MenuState<UIForgeLayers>()
+            : ModRegisters.MenuState<UIForgeFrames>();
+
     public override void Create()
     {
-      MainMenu.MenuState framesState = ModRegisters.MenuState<UIForgeFrames>();
-
       design = UIForgeList.Editing;
       slot = ForgeSlots.Get(UIForgeFrames.EditingSlot);
 
       if (design == null || slot == null)
       {
-        Main.State = framesState;
+        Main.State = Home;
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeFramePicker>());
-      Main.BackState = framesState;
+
+      // Le retour quitte l'ecran, quel que soit le niveau ou l'on se trouve, et c'est
+      // MainMenu qui s'en charge comme partout ailleurs.
+      //
+      // Il a d'abord servi a remonter des cases vers les planches, ce qui paraissait
+      // naturel - deux listes, deux crans - et ne l'est pas : on est venu ici depuis
+      // la liste des poses, c'est la qu'on veut retourner. Le changement de planche
+      // n'est pas un niveau au-dessus, c'est une action de cet ecran, et il a
+      // maintenant sa ligne.
+      Main.BackState = Home;
+
       Main.TweenBGCameraToY(2);
 
       Main.Add(new UIPickerHeader(new Vector2(160f, 34f), design.Name, slot.Label));
@@ -66,11 +90,6 @@ namespace TFModFortRiseProfiles
 
       thumb = new UIForgeCellPreview(ThumbPosition);
       Main.Add(thumb);
-
-      // CustomMenuState n'a pas d'Update : c'est cet objet qui ecoute le bouton
-      // retour pour remonter d'un niveau. Voir UIForgeBackWatcher.
-      watcher = new UIForgeBackWatcher(() => opened != null, BuildSheets);
-      Main.Add(watcher);
 
       opened = null;
       rows.Clear();
@@ -95,7 +114,6 @@ namespace TFModFortRiseProfiles
     {
       thumb?.Release();
       thumb = null;
-      watcher = null;
       rows.Clear();
     }
 
@@ -117,14 +135,9 @@ namespace TFModFortRiseProfiles
       Clear();
       opened = null;
 
-      // Le bouton retour quitte l'ecran quand on est au premier niveau ; il remonte
-      // d'un cran quand on est dans une planche. C'est Update qui s'en charge, il
-      // faut donc rendre ici la sortie a MainMenu.
-      Main.BackState = ModRegisters.MenuState<UIForgeFrames>();
-
-      // Seulement les planches dont la forge sait tirer une pose. Une case de 64 ou
-      // de 128 rendrait un coin de la creature au lieu de la creature, sans rien
-      // signaler : mieux vaut ne pas la proposer que livrer une image fausse.
+      // Toutes les planches mesurables, quelle que soit leur case : une pose se
+      // recadre calque par calque. Ne restent ecartees que celles dont l'index ne se
+      // lit pas ou ne declare aucune image, qui n'ont rien a proposer.
       List<ForgeSource> sources = ForgeBank.PickableSources();
 
       if (sources.Count == 0)
@@ -142,7 +155,12 @@ namespace TFModFortRiseProfiles
         ForgeSource source = sources[i];
 
         UIMenuRow row = MakeRow(i, UIForgeEdit.Shorten(source.Name));
-        row.RightText = () => source.FrameCount + "";
+
+        // La taille de case n'est dite que lorsqu'elle sort de l'ordinaire. Une
+        // planche qui n'est pas au format habituel demandera un recadrage, et le
+        // savoir AVANT d'y prendre trente poses evite de les reprendre ensuite.
+        row.RightText = () => Sized(source);
+
         row.OnConfirmed = () => BuildCells(source);
         row.OnSelected = () => thumb?.Release();
         built.Add(row);
@@ -156,10 +174,6 @@ namespace TFModFortRiseProfiles
       Clear();
       opened = source;
 
-      // Tant qu'une planche est ouverte, le retour est intercepte par Update.
-      // MainMenu.BackState est neutralise pour qu'il ne quitte pas aussi l'ecran.
-      Main.BackState = ModRegisters.MenuState<UIForgeFramePicker>();
-
       List<ForgeCell> cells = ForgeBank.CellsOf(source);
 
       if (cells.Count == 0)
@@ -171,7 +185,14 @@ namespace TFModFortRiseProfiles
       }
 
       var built = new List<UIMenuRow>();
-      ForgeCell? canonical = ForgeLayout.Of(slot.Key);
+
+      // Le curseur s'ouvre sur l'image deja choisie pour cette pose, ou en tete.
+      //
+      // Il visait auparavant la case canonique de la table Broforce, disparue avec le
+      // pre-remplissage : hors de cette mise en page elle designait une case au hasard.
+      // Retomber sur ce qu'on a soi-meme pose est vrai pour toute planche, et c'est
+      // ce qu'on cherche en rouvrant une pose - la retrouver dans cinq cents lignes
+      // autrement demanderait de se souvenir de ses coordonnees.
       int select = 0;
 
       // Une sortie qui ne detruit rien, en tete de liste.
@@ -183,9 +204,9 @@ namespace TFModFortRiseProfiles
       //
       // Il n'y a rien a confirmer : chaque calque est deja enregistre en arrivant.
       // Cette ligne ne valide pas, elle raccompagne.
-      UIMenuRow doneRow = MakeRow(0, "<< TERMINER");
+      UIMenuRow doneRow = MakeRow(built.Count, "<< TERMINER");
       doneRow.RightText = Stacked;
-      doneRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeFrames>();
+      doneRow.OnConfirmed = () => Main.State = Home;
 
       // Les autres lignes montrent la case qu'on survole ; celle-ci montre la pose
       // telle qu'elle est devenue. C'est le seul endroit de l'ecran ou l'empilement
@@ -195,29 +216,37 @@ namespace TFModFortRiseProfiles
       doneRow.OnSelected = () => thumb?.ShowPose(design, slot.Key);
       built.Add(doneRow);
 
+      // Changer de planche est une ligne et non le bouton retour.
+      //
+      // L'ecran s'ouvre directement dans la planche la plus probable, ce qui fait
+      // gagner un cran neuf fois sur dix ; il faut donc bien un moyen d'en sortir pour
+      // aller voir ailleurs. Mais ce moyen ne peut pas etre le retour, qui doit
+      // ramener d'ou l'on vient - la liste des poses - et non vers un ecran qu'on n'a
+      // jamais traverse.
+      // Libelle court : la ligne porte aussi le nom de la planche courante, et
+      // "CHANGER DE PLANCHE" plus un nom de seize caracteres se chevauchaient.
+      UIMenuRow switchRow = MakeRow(built.Count, "<< PLANCHE");
+      switchRow.RightText = () => UIForgeEdit.Shorten(source.Name);
+      switchRow.OnConfirmed = BuildSheets;
+      switchRow.OnSelected = () => thumb?.Release();
+      built.Add(switchRow);
+
       for (int i = 0; i < cells.Count; i++)
       {
         ForgeCell cell = cells[i];
 
         UIMenuRow row = MakeRow(built.Count, cell.ToString().ToUpperInvariant());
 
-        // La case canonique de cet emplacement est signalee : sur une planche de
-        // personnage c'est presque toujours la bonne, et la retrouver dans cinq cents
-        // lignes autrement demanderait de connaitre la table par coeur.
-        bool suggested = canonical != null
-                         && canonical.Value.Col == cell.Col
-                         && canonical.Value.Row == cell.Row;
-
-        if (suggested)
+        if (Rank(source, cell) == 0)
         {
           select = built.Count;
         }
 
-        // Le rang de l'image dans l'empilement prime sur "SUGGESTED" : ce qu'on veut
-        // savoir en parcourant la liste, c'est ce qu'on a deja pose et dans quel
-        // ordre. Sans ce repere, empiler ne se voit nulle part et parait sans effet.
+        // Le rang de l'image dans l'empilement : ce qu'on veut savoir en parcourant la
+        // liste, c'est ce qu'on a deja pose et dans quel ordre. Sans ce repere, empiler
+        // ne se voit nulle part et parait sans effet.
         ForgeSource captured = source;
-        row.RightText = () => Mark(captured, cell, suggested);
+        row.RightText = () => Mark(captured, cell);
 
         row.OnConfirmed = () => Choose(source, cell);
         row.OnAlt = () => Stack(source, cell);
@@ -226,7 +255,7 @@ namespace TFModFortRiseProfiles
         // rien ne dit qu'elle existe, ni sur quelle touche.
         row.AltGuide = "ADD LAYER";
 
-        row.OnSelected = () => thumb?.Show(source, cell, design.WindowX, design.WindowY);
+        row.OnSelected = () => thumb?.Show(source, cell, design);
         built.Add(row);
       }
 
@@ -262,7 +291,7 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (built.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
 
-      MenuItem toSelect = built[Math.Clamp(select, 0, built.Count - 1)];
+      UIMenuRow toSelect = built[Math.Clamp(select, 0, built.Count - 1)];
       Main.ToStartSelected = toSelect;
 
       // La liste est reconstruite en place, hors transition : c'est a nous de rendre
@@ -270,6 +299,20 @@ namespace TFModFortRiseProfiles
       if (!Main.Transitioning)
       {
         toSelect.Selected = true;
+
+        // Et c'est aussi a nous d'annoncer le bouton Alt. UIMenuRow le fait depuis
+        // OnSelect, mais en lisant sa propriete MainMenu - qui n'est renseignee qu'a
+        // l'entree dans la scene, donc pas encore : la ligne vient d'etre creee. Sans
+        // ce rappel, le guide gardait le "ADD LAYER" des cases alors qu'on choisit une
+        // planche, ou Alt ne fait rien.
+        if (toSelect.AltGuide != null)
+        {
+          Main.ButtonGuideC.SetDetails(MenuButtonGuide.ButtonModes.Alt, toSelect.AltGuide);
+        }
+        else
+        {
+          Main.ButtonGuideC.Clear();
+        }
       }
     }
 
@@ -283,19 +326,32 @@ namespace TFModFortRiseProfiles
     private void Choose(ForgeSource source, ForgeCell cell)
     {
       design.Set(slot.Key, ForgePick.Of(source.Name, cell));
+      design.Source = source.Name;
       ForgeStorage.Save();
-      Main.State = ModRegisters.MenuState<UIForgeFrames>();
+      Main.State = Home;
     }
 
     private void Stack(ForgeSource source, ForgeCell cell)
     {
       design.AddLayer(slot.Key, ForgePick.Of(source.Name, cell));
+      design.Source = source.Name;
       ForgeStorage.Save();
 
       // On reste sur place : empiler des bras, une arme et un chapeau se fait
       // d'affilee, et repartir de la liste des poses a chaque calque couterait trois
       // pressions par image.
       Sounds.ui_move2.Play(160f, 1f);
+    }
+
+    /// <summary>Le compte d'images d'une planche, suivi de sa case si elle detonne.</summary>
+    private static string Sized(ForgeSource source)
+    {
+      if (source.CellWidth == ForgeSlots.SourceCell && source.CellHeight == ForgeSlots.SourceCell)
+      {
+        return source.FrameCount + "";
+      }
+
+      return source.FrameCount + " - " + source.CellWidth + "x" + source.CellHeight;
     }
 
     /// <summary>Ce que porte la ligne de sortie : l'etat de la pose.</summary>
@@ -311,11 +367,27 @@ namespace TFModFortRiseProfiles
       return count == 1 ? "1 IMAGE" : count + " IMAGES";
     }
 
+    /// <summary>Ce que porte une case a droite : son rang dans l'empilement, ou rien.</summary>
+    private string Mark(ForgeSource source, ForgeCell cell)
+    {
+      int rank = Rank(source, cell);
+
+      if (rank < 0)
+      {
+        return "";
+      }
+
+      return design.LayersOf(slot.Key).Count == 1 ? "CHOISIE" : "CALQUE " + (rank + 1);
+    }
+
     /// <summary>
-    /// Ce que porte une case a droite : son rang dans l'empilement, ou le fait
-    /// qu'elle soit la case attendue pour cette pose.
+    /// Rang de cette case dans l'empilement de la pose, ou -1 si elle n'y est pas.
+    ///
+    /// Sert au libelle et au placement du curseur a l'ouverture, qui doivent designer
+    /// la meme image : les separer laisserait le curseur deriver du marquage a la
+    /// premiere retouche de l'un des deux.
     /// </summary>
-    private string Mark(ForgeSource source, ForgeCell cell, bool suggested)
+    private int Rank(ForgeSource source, ForgeCell cell)
     {
       List<ForgePick> stack = design.LayersOf(slot.Key);
 
@@ -326,59 +398,12 @@ namespace TFModFortRiseProfiles
             && stack[i].Row == cell.Row
             && string.Equals(stack[i].Source, source.Name, StringComparison.OrdinalIgnoreCase))
         {
-          return stack.Count == 1 ? "CHOISIE" : "CALQUE " + (i + 1);
+          return i;
         }
       }
 
-      return suggested ? "SUGGESTED" : "";
+      return -1;
     }
-  }
-
-  /// <summary>
-  /// Ecoute le bouton retour pour le compte d'un ecran a deux niveaux.
-  ///
-  /// CustomMenuState n'expose ni Update ni Render : un etat de menu ne peut pas
-  /// lire l'entree lui-meme. Tout ce qui doit reagir a une touche passe donc par un
-  /// objet pose dans le menu, et c'est le role de celui-ci.
-  ///
-  /// MainMenu ne quitte l'ecran sur le bouton retour que si BackState differe de
-  /// State. L'ecran met donc les deux a la meme valeur tant qu'une planche est
-  /// ouverte, ce qui neutralise la sortie et laisse ce guetteur remonter d'un cran.
-  /// Les deux ne peuvent pas se declencher ensemble.
-  /// </summary>
-  public class UIForgeBackWatcher : UIForgePanel
-  {
-    private readonly Func<bool> active;
-    private readonly Action onBack;
-
-    public UIForgeBackWatcher(Func<bool> active, Action onBack) : base(Vector2.Zero)
-    {
-      this.active = active;
-      this.onBack = onBack;
-    }
-
-    public override void Update()
-    {
-      base.Update();
-
-      // CanAct tombe pendant une modale ou un clavier virtuel : sans ce test, fermer
-      // le clavier fermerait aussi la planche ouverte derriere lui.
-      if (MainMenu == null || !MainMenu.CanAct || MainMenu.Transitioning)
-      {
-        return;
-      }
-
-      if (active() && MenuInput.Back)
-      {
-        Sounds.ui_clickBack.Play(160f, 1f);
-        onBack();
-      }
-    }
-
-    public override void Render()
-    {
-    }
-
   }
 
   /// <summary>
@@ -389,19 +414,25 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public class UIForgeCellPreview : UIForgePanel
   {
-    private const int Scale = 4;
-
     private Texture2D texture;
-    private int cellWidth;
-    private int cellHeight;
+    private int width;
+    private int height;
     private int windowX;
     private int windowY;
+    private float zoom = 4f;
 
     public UIForgeCellPreview(Vector2 position) : base(position)
     {
     }
 
-    public void Show(ForgeSource source, ForgeCell cell, int windowX, int windowY)
+    /// <summary>
+    /// Une case du vivier, avec la fenetre posee ou elle tomberait.
+    ///
+    /// Le decalage de la planche est pris en compte, celui du calque non : ce dernier
+    /// n'existe pas encore, la case n'etant pas choisie. La fenetre est donc montree
+    /// la ou elle tomberait si l'on validait maintenant.
+    /// </summary>
+    public void Show(ForgeSource source, ForgeCell cell, ForgeDesign design)
     {
       Release();
 
@@ -412,22 +443,25 @@ namespace TFModFortRiseProfiles
         return;
       }
 
-      Adopt(pixels, source.CellWidth, source.CellHeight, windowX, windowY);
+      ForgeNudge sheet = design.NudgeOf(source.Name);
+
+      Adopt(pixels, source.CellWidth, source.CellHeight,
+          design.WindowX - sheet.X, design.WindowY - sheet.Y);
     }
 
-    /// <summary>La pose complete, calques fusionnes, telle qu'elle est enregistree.</summary>
+    /// <summary>La pose complete, calques fusionnes et decales, telle qu'elle est enregistree.</summary>
     public void ShowPose(ForgeDesign design, string slotKey)
     {
       Release();
 
-      Color[] merged = ForgeCompose.Pose(design, slotKey, out int width, out int height, out _);
+      ForgePose pose = ForgeCompose.Pose(design, slotKey);
 
-      if (merged == null)
+      if (pose == null)
       {
         return;
       }
 
-      Adopt(merged, width, height, design.WindowX, design.WindowY);
+      Adopt(pose.Pixels, pose.Width, pose.Height, pose.WindowX, pose.WindowY);
     }
 
     private void Adopt(Color[] pixels, int width, int height, int windowX, int windowY)
@@ -436,10 +470,11 @@ namespace TFModFortRiseProfiles
       {
         texture = new Texture2D(Engine.Instance.GraphicsDevice, width, height);
         texture.SetData(pixels);
-        cellWidth = width;
-        cellHeight = height;
+        this.width = width;
+        this.height = height;
         this.windowX = windowX;
         this.windowY = windowY;
+        zoom = ZoomFor(width, height);
       }
       catch (Exception e)
       {
@@ -459,8 +494,8 @@ namespace TFModFortRiseProfiles
     {
       base.Render();
 
-      float boxWidth = cellWidth > 0 ? cellWidth * Scale : ForgeSlots.SourceCell * Scale;
-      float boxHeight = cellHeight > 0 ? cellHeight * Scale : ForgeSlots.SourceCell * Scale;
+      float boxWidth = (width > 0 ? width : ForgeSlots.SourceCell) * zoom;
+      float boxHeight = (height > 0 ? height : ForgeSlots.SourceCell) * zoom;
 
       var corner = new Vector2(Position.X - boxWidth * 0.5f, Position.Y - boxHeight * 0.5f);
       Draw.Rect(corner.X, corner.Y, boxWidth, boxHeight, Color.Black * 0.55f);
@@ -472,13 +507,45 @@ namespace TFModFortRiseProfiles
       }
 
       Draw.SpriteBatch.Draw(texture, corner, null, Color.White, 0f, Vector2.Zero,
-          Scale, SpriteEffects.None, 0f);
+          zoom, SpriteEffects.None, 0f);
 
       Draw.HollowRect(new Rectangle(
-          (int)(corner.X + windowX * Scale),
-          (int)(corner.Y + windowY * Scale),
-          ForgeSlots.Frame * Scale,
-          ForgeSlots.Frame * Scale), Color.Orange * 0.8f);
+          (int)(corner.X + windowX * zoom),
+          (int)(corner.Y + windowY * zoom),
+          (int)(ForgeSlots.Frame * zoom),
+          (int)(ForgeSlots.Frame * zoom)), Color.Orange * 0.8f);
+    }
+
+  }
+
+  /// <summary>
+  /// Ce qui s'affiche quand le vivier ne contient aucune planche exploitable.
+  ///
+  /// Une liste vide sans un mot laisse croire a une panne du mod, alors qu'il manque
+  /// seulement des images. Le message dit donc l'endroit exact ou les deposer : c'est
+  /// la seule chose qui debloque, et la chercher dans la documentation quand on est
+  /// deja dans l'ecran serait une perte.
+  /// </summary>
+  public class UIForgeBankHint : UIForgePanel
+  {
+    public UIForgeBankHint(Vector2 position) : base(position)
+    {
+    }
+
+    public override void Render()
+    {
+      base.Render();
+
+      Draw.OutlineTextCentered(TFGame.Font, "AUCUNE PLANCHE DANS LE VIVIER",
+          Position, Color.Gray, Color.Black);
+
+      Draw.OutlineTextCentered(TFGame.Font, "DEPOSER DES IMAGES DECOUPEES DANS",
+          Position + new Vector2(0f, 14f), Color.Gray, Color.Black);
+
+      // Le chemin est relu a chaque image : un fichier sprites.path peut le deplacer,
+      // et afficher l'ancien enverrait deposer les images la ou rien ne les lira.
+      Draw.OutlineTextCentered(TFGame.Font, MenuText.Safe(ForgeBank.Root ?? ""),
+          Position + new Vector2(0f, 26f), Color.Gray, Color.Black);
     }
 
   }
@@ -508,10 +575,10 @@ namespace TFModFortRiseProfiles
   /// <summary>
   /// Combien de planches du vivier ne sont pas proposees.
   ///
-  /// Le filtre est necessaire, mais il ne doit pas etre muet : une planche deposee
-  /// dans le vivier et absente de la liste ferait chercher une faute de nom ou un
-  /// decoupage rate, alors qu'elle est seulement au mauvais format. Cette ligne
-  /// repond a la question avant qu'on la pose.
+  /// Le filtre ne doit pas etre muet : une planche deposee dans le vivier et absente
+  /// de la liste ferait chercher une faute de nom ou un decoupage rate. Il ne reste
+  /// que deux raisons de l'ecarter - un index.json qu'on ne sait pas lire, ou qui ne
+  /// declare aucune image - et cette ligne le dit avant qu'on cherche.
   /// </summary>
   public class UIForgeHiddenNote : UIForgePanel
   {
@@ -538,8 +605,8 @@ namespace TFModFortRiseProfiles
       }
 
       string line = hidden == 1
-          ? "1 PLANCHE MASQUEE - CASE AUTRE QUE " + ForgeSlots.SourceCell
-          : hidden + " PLANCHES MASQUEES - CASE AUTRE QUE " + ForgeSlots.SourceCell;
+          ? "1 PLANCHE MASQUEE - INDEX ILLISIBLE OU VIDE"
+          : hidden + " PLANCHES MASQUEES - INDEX ILLISIBLE OU VIDE";
 
       Draw.OutlineTextCentered(TFGame.Font, MenuText.Safe(line), Position,
           Color.Gray, Color.Black);

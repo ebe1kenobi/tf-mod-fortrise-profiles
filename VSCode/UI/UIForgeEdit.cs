@@ -35,6 +35,20 @@ namespace TFModFortRiseProfiles
 
     private string noticeRow;
 
+    /// <summary>
+    /// Ligne ou revenir en rouvrant la fiche.
+    ///
+    /// La fiche est reconstruite a chaque entree, et on en sort sans arret : les
+    /// poses, la source, la voix et la musique sont autant d'ecrans qui y ramenent.
+    /// Repartir de NAME a chaque retour obligeait a redescendre la liste entiere pour
+    /// reprendre la ou l'on etait, ce qui se paie a chaque aller-retour - et regler un
+    /// archer n'est fait que d'allers-retours.
+    /// </summary>
+    private static int resume;
+
+    /// <summary>Dessin de la derniere ouverture : un autre archer repart du haut.</summary>
+    private static string resumeId;
+
     public UIForgeEdit(MainMenu main) : base(main)
     {
     }
@@ -53,6 +67,12 @@ namespace TFModFortRiseProfiles
 
       notice = null;
       noticeRow = null;
+
+      if (!string.Equals(resumeId, design.Id, StringComparison.Ordinal))
+      {
+        resume = 0;
+        resumeId = design.Id;
+      }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeEdit>());
       Main.BackState = listState;
@@ -79,11 +99,16 @@ namespace TFModFortRiseProfiles
       name1Row.OnConfirmed = () => AskLine("BOTTOM NAME", design.Name1, value => design.Name1 = value);
       rows.Add(name1Row);
 
-      UIMenuRow sourceRow = MakeRow(rows.Count, "SOURCE");
-      sourceRow.RightText = () => string.IsNullOrEmpty(design.Source) ? "NONE" : Shorten(design.Source);
-      sourceRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeSource>();
-      rows.Add(sourceRow);
-
+      // Il n'y a plus de ligne SOURCE.
+      //
+      // Elle choisissait une planche pour pre-remplir les dix-neuf poses d'un coup,
+      // ce qui supposait la mise en page Broforce et ne valait donc que pour elle.
+      // Sur toute autre planche elle posait dix-neuf images prises au hasard, qu'il
+      // fallait ensuite defaire une par une - plus long que de partir de rien.
+      //
+      // La planche se choisit maintenant la ou l'on choisit les images, par la ligne
+      // << PLANCHE du selecteur, et elle vaut pour la pose qu'on est en train de
+      // remplir plutot que pour l'archer entier.
       UIMenuRow framesRow = MakeRow(rows.Count, "FRAMES");
       framesRow.RightText = FramesLabel;
       framesRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeFrames>();
@@ -163,7 +188,7 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
-      Main.ToStartSelected = rows[0];
+      Main.ToStartSelected = rows[Math.Clamp(resume, 0, rows.Count - 1)];
     }
 
     public override void Destroy()
@@ -181,7 +206,13 @@ namespace TFModFortRiseProfiles
     {
       float y = FirstRowY + index * RowStep;
       var from = new Vector2(index % 2 == 0 ? -200f : 520f, y);
-      return new UIMenuRow(new Vector2(RowX, y), from, label);
+
+      return new UIMenuRow(new Vector2(RowX, y), from, label)
+      {
+        // Le rang est retenu au passage du focus et non a la sortie de l'ecran : au
+        // moment ou Destroy s'execute, plus rien ne porte la selection.
+        OnSelected = () => resume = index
+      };
     }
 
     // ------------------------------------------------------------------

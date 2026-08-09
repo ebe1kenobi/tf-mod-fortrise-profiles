@@ -61,8 +61,13 @@ namespace TFModFortRiseProfiles
     public const int SourceCell = 32;
 
     // Fenetre de decoupe dans la case source, calee sur le personnage debout :
-    // pieds a y=30, sommet du chapeau a y=11. La meme pour toutes les poses, sans
-    // quoi le personnage sauterait d'une image a l'autre au lieu de marcher.
+    // pieds a y=30, sommet du chapeau a y=11.
+    //
+    // Elle reste commune a toutes les poses, et c'est elle qui tient l'alignement
+    // d'ensemble : ce sont les CALQUES qui se deplacent sous elle, pas elle qui se
+    // deplace d'une pose a l'autre. La distinction n'est pas theorique - une fenetre
+    // reglee pose par pose ferait sautiller le personnage au lieu de le faire
+    // marcher, alors qu'un calque recale corrige justement ce sautillement.
     public const int WindowX = 3;
     public const int WindowY = 7;
 

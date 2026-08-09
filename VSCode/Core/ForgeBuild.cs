@@ -301,125 +301,21 @@ namespace TFModFortRiseProfiles
     // Decoupe et accolement
     // ------------------------------------------------------------------
 
-    /// <summary>Pixels d'une pose, deja recadres a la fenetre, ou null.</summary>
     /// <summary>
-    /// Les pixels d'une pose : ses calques fusionnes dans l'ordre du choix.
+    /// Les pixels d'une pose, deja recadres a la fenetre, ou null.
     ///
     /// Broforce dessine les bras sur une planche a part - ils s'animent
     /// independamment du corps - et une pose faite du seul corps sort manchote. Le
-    /// premier calque est le fond, chaque suivant se pose par-dessus.
+    /// premier calque est le fond, chaque suivant se pose par-dessus, chacun a son
+    /// propre decalage.
     ///
-    /// Un calque introuvable est saute et non fatal : perdre les bras vaut mieux que
-    /// perdre la pose, et le journal dit lequel manque.
+    /// L'assemblage est celui de <see cref="ForgeCompose"/>, qui sert aussi aux
+    /// ecrans : la fabrication ne fait qu'y decouper la fenetre. Deux assemblages
+    /// separes finiraient par diverger d'un pixel, et c'est l'apercu qu'on croirait.
     /// </summary>
     private static Color[] ReadPose(ForgeDesign design, string slotKey)
     {
-      Color[] merged = null;
-
-      foreach (ForgePick pick in design.LayersOf(slotKey))
-      {
-        Color[] layer = ReadLayer(design, pick);
-
-        if (layer == null)
-        {
-          continue;
-        }
-
-        if (merged == null)
-        {
-          merged = layer;
-          continue;
-        }
-
-        Over(merged, layer);
-      }
-
-      return merged;
-    }
-
-    private static Color[] ReadLayer(ForgeDesign design, ForgePick pick)
-    {
-      if (pick == null)
-      {
-        return null;
-      }
-
-      ForgeSource source = ForgeBank.Find(pick.Source);
-      if (source == null)
-      {
-        Log.Error($"[Forge] planche {pick.Source} absente du vivier");
-        return null;
-      }
-
-      Color[] cell = ForgeBank.ReadCell(source, pick.Cell);
-      return cell == null ? null : Window(cell, source, design);
-    }
-
-    /// <summary>
-    /// Superpose un calque sur le precedent.
-    ///
-    /// Les sprites sont a bords francs : un pixel est opaque ou il ne l'est pas. On
-    /// recouvre donc plutot que de melanger - un melange sur un pixel semi-opaque
-    /// donnerait un halo la ou le dessin d'origine n'en a pas.
-    /// </summary>
-    private static void Over(Color[] under, Color[] above)
-    {
-      for (int i = 0; i < under.Length && i < above.Length; i++)
-      {
-        if (above[i].A != 0)
-        {
-          under[i] = above[i];
-        }
-      }
-    }
-
-    /// <summary>
-    /// Extrait la fenetre de decoupe d'une case.
-    ///
-    /// La meme fenetre pour toutes les poses : c'est elle qui tient l'alignement. La
-    /// deplacer d'une pose a l'autre ferait sautiller le personnage au lieu de le
-    /// faire marcher.
-    ///
-    /// Une fenetre qui deborde de la case est rognee plutot que refusee : une
-    /// planche aux cases plus petites que 24 reste utilisable, le personnage y aura
-    /// simplement de la marge.
-    /// </summary>
-    private static Color[] Window(Color[] cell, ForgeSource source, ForgeDesign design)
-    {
-      int size = ForgeSlots.Frame;
-      var window = new Color[size * size];
-
-      for (int y = 0; y < size; y++)
-      {
-        int sourceY = design.WindowY + y;
-        if (sourceY < 0 || sourceY >= source.CellHeight)
-        {
-          continue;
-        }
-
-        for (int x = 0; x < size; x++)
-        {
-          int sourceX = design.WindowX + x;
-          if (sourceX < 0 || sourceX >= source.CellWidth)
-          {
-            continue;
-          }
-
-          Color pixel = cell[sourceY * source.CellWidth + sourceX];
-
-          // Un pixel entierement transparent est laisse a zero plutot que recopie
-          // avec sa couleur. C'est invisible en alpha ordinaire, mais les planches
-          // exportees deviennent comparables octet a octet a celles du prototype -
-          // et une comparaison qui echoue pour une raison invisible est une
-          // comparaison qu'on finit par ne plus faire.
-          if (pixel.A != 0)
-          {
-            window[y * size + x] = pixel;
-          }
-        }
-      }
-
-      return window;
+      return ForgeCompose.Cut(ForgeCompose.Pose(design, slotKey));
     }
 
     private static ForgeImage Assemble(

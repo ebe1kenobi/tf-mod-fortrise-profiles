@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -13,6 +13,23 @@ namespace TFModFortRiseProfiles
     public int Col { get; set; }
     public int Row { get; set; }
 
+    /// <summary>
+    /// De combien ce calque se deplace, en pixels, dans la pose assemblee.
+    ///
+    /// Compte en DEPLACEMENT DU PERSONNAGE et non en position de fenetre : une
+    /// valeur positive pousse l'image vers la droite, ce que la fleche droite fait
+    /// donc aussi. L'inverse - deplacer la fenetre - se code plus court d'un signe et
+    /// rend un ecran d'alignement ou chaque touche fait le contraire de ce qu'on voit.
+    ///
+    /// S'ajoute au decalage de la planche, voir <see cref="ForgeDesign.NudgeOf"/>.
+    /// Sert aux images qui derivent entre elles a l'interieur d'une meme planche :
+    /// deux images de course calees differemment font boiter le personnage, et aucun
+    /// reglage d'ensemble ne les rattrape.
+    /// </summary>
+    public int OffsetX { get; set; }
+
+    public int OffsetY { get; set; }
+
     [JsonIgnore]
     public ForgeCell Cell => new ForgeCell(Col, Row);
 
@@ -25,6 +42,18 @@ namespace TFModFortRiseProfiles
     {
       return Source + "/" + Cell;
     }
+  }
+
+  /// <summary>
+  /// Un decalage en pixels, dans le meme sens que <see cref="ForgePick.OffsetX"/>.
+  ///
+  /// Une classe et non un tuple : System.Text.Json ne serialise pas les champs des
+  /// ValueTuple, et un tableau de deux entiers se relit sans dire lequel est lequel.
+  /// </summary>
+  public class ForgeNudge
+  {
+    public int X { get; set; }
+    public int Y { get; set; }
   }
 
   /// <summary>
@@ -63,11 +92,15 @@ namespace TFModFortRiseProfiles
     public string ColorB { get; set; } = "C08040";
 
     /// <summary>
-    /// Planche qui a pre-rempli les emplacements, gardee pour pouvoir y revenir.
+    /// Derniere planche dans laquelle on a pris une image, pour y rouvrir.
     ///
-    /// Elle ne fait pas foi : ce sont les choix de <see cref="Picks"/> qui comptent.
-    /// Une pose retouchee ne doit pas revenir a celle de la source parce qu'on a
-    /// rouvert l'ecran.
+    /// Elle ne pre-remplit rien et ne fait foi de rien : c'est un simple raccourci de
+    /// navigation. Le selecteur ouvre cette planche quand l'emplacement est encore
+    /// vide, ce qui evite de retraverser la liste des planches a chacune des dix-neuf
+    /// poses quand elles viennent toutes du meme personnage - le cas ordinaire.
+    ///
+    /// Le nom est conserve pour relire les dessins ecrits quand ce champ designait la
+    /// planche de pre-remplissage : la valeur y a exactement le meme sens utile.
     /// </summary>
     public string Source { get; set; } = "";
 
@@ -112,6 +145,21 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public Dictionary<string, List<ForgePick>> Layers { get; set; }
         = new Dictionary<string, List<ForgePick>>();
+
+    /// <summary>
+    /// Recalage d'une planche entiere, par nom de planche source.
+    ///
+    /// Une planche dont le personnage n'est pas pose au meme endroit dans sa case
+    /// decale ses dix-neuf poses du meme nombre de pixels. Les corriger une par une
+    /// serait un travail de copiste, et le premier reglage de fenetre qu'on toucherait
+    /// ensuite le referait entierement.
+    ///
+    /// Dans le dessin et non dans index.json du vivier : slice_sheets.py regenere ce
+    /// fichier et effacerait le reglage. Deux archers peuvent d'ailleurs vouloir de la
+    /// meme planche des cadrages differents.
+    /// </summary>
+    public Dictionary<string, ForgeNudge> SheetNudge { get; set; }
+        = new Dictionary<string, ForgeNudge>();
 
     /// <summary>
     /// Identifiant du dessin dont celui-ci est le costume ALT, ou vide.
@@ -209,6 +257,65 @@ namespace TFModFortRiseProfiles
           : new List<ForgePick>();
     }
 
+    /// <summary>Le recalage d'une planche. Jamais null : une planche jamais reglee vaut zero.</summary>
+    public ForgeNudge NudgeOf(string source)
+    {
+      SheetNudge ??= new Dictionary<string, ForgeNudge>();
+
+      if (string.IsNullOrEmpty(source)
+          || !SheetNudge.TryGetValue(source, out ForgeNudge nudge)
+          || nudge == null)
+      {
+        return new ForgeNudge();
+      }
+
+      return nudge;
+    }
+
+    /// <summary>
+    /// Deplace une planche entiere. Un reglage revenu a zero est retire plutot que
+    /// laisse : un dictionnaire d'entrees nulles grossit a chaque planche essayee.
+    /// </summary>
+    public void Nudge(string source, int dx, int dy)
+    {
+      if (string.IsNullOrEmpty(source))
+      {
+        return;
+      }
+
+      SheetNudge ??= new Dictionary<string, ForgeNudge>();
+
+      ForgeNudge nudge = NudgeOf(source);
+      int x = nudge.X + dx;
+      int y = nudge.Y + dy;
+
+      if (x == 0 && y == 0)
+      {
+        SheetNudge.Remove(source);
+      }
+      else
+      {
+        SheetNudge[source] = new ForgeNudge { X = x, Y = y };
+      }
+
+      Touch();
+    }
+
+    /// <summary>
+    /// Ou se pose un calque dans la pose assemblee : son propre decalage plus celui
+    /// de sa planche. C'est le seul endroit ou les deux niveaux se rencontrent.
+    /// </summary>
+    public ForgeNudge PlacementOf(ForgePick pick)
+    {
+      if (pick == null)
+      {
+        return new ForgeNudge();
+      }
+
+      ForgeNudge sheet = NudgeOf(pick.Source);
+      return new ForgeNudge { X = sheet.X + pick.OffsetX, Y = sheet.Y + pick.OffsetY };
+    }
+
     /// <summary>
     /// La premiere image d'une pose, ou null.
     ///
@@ -274,55 +381,6 @@ namespace TFModFortRiseProfiles
       if (stack.Count == 0)
       {
         Layers.Remove(slotKey);
-      }
-
-      Touch();
-    }
-
-    /// <summary>
-    /// Pose les seize emplacements aux coordonnees canoniques d'une planche.
-    /// </summary>
-    /// <param name="keepEdits">
-    /// Vrai pour ne remplir que ce qui est vide. C'est ce qu'on veut quand on change
-    /// de source apres avoir deja retouche : une correction faite a la main ne doit
-    /// pas se perdre parce qu'on a essaye une autre planche.
-    /// </param>
-    public void Prefill(ForgeSource source, bool keepEdits = false)
-    {
-      if (source == null)
-      {
-        return;
-      }
-
-      Layers ??= new Dictionary<string, List<ForgePick>>();
-      Source = source.Name;
-
-      foreach (ForgeSlot slot in ForgeSlots.All)
-      {
-        if (keepEdits && Layers.ContainsKey(slot.Key))
-        {
-          continue;
-        }
-
-        ForgeCell? cell = ForgeLayout.Of(slot.Key);
-        if (cell == null)
-        {
-          continue;
-        }
-
-        // Une case vide n'a pas de fichier. On laisse l'emplacement vide plutot que
-        // d'y inscrire une reference qui ne mene nulle part : c'est ce qui permet a
-        // l'ecran de dire ce qui reste a faire.
-        if (!ForgeBank.Has(source, cell.Value))
-        {
-          Layers.Remove(slot.Key);
-          continue;
-        }
-
-        // Le pre-remplissage repose une pose entiere : il remplace l'empilement au
-        // lieu de s'y ajouter, sans quoi changer de source empilerait deux
-        // personnages l'un sur l'autre.
-        Layers[slot.Key] = new List<ForgePick> { ForgePick.Of(source.Name, cell.Value) };
       }
 
       Touch();

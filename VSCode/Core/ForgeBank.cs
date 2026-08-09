@@ -43,14 +43,6 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public bool CanPick;
 
-    /// <summary>
-    /// Vrai si la table des coordonnees canoniques s'applique a cette planche :
-    /// exploitable, et grille assez grande pour que les seize poses existent. Les
-    /// autres restent choisissables case par case, mais ne peuvent pas pre-remplir un
-    /// archer d'un coup.
-    /// </summary>
-    public bool CanPrefill;
-
     public override string ToString()
     {
       return Name;
@@ -255,22 +247,6 @@ namespace TFModFortRiseProfiles
       return count;
     }
 
-    /// <summary>Les planches qui peuvent pre-remplir un archer d'un coup.</summary>
-    public static List<ForgeSource> PrefillableSources()
-    {
-      var list = new List<ForgeSource>();
-
-      foreach (ForgeSource source in Sources)
-      {
-        if (source.CanPrefill)
-        {
-          list.Add(source);
-        }
-      }
-
-      return list;
-    }
-
     public static ForgeSource Find(string name)
     {
       if (string.IsNullOrEmpty(name))
@@ -319,14 +295,15 @@ namespace TFModFortRiseProfiles
               : 0
         };
 
-        // La fenetre de decoupe n'a de sens que sur la case pour laquelle elle a ete
-        // relevee. Et la table des coordonnees ne vaut que pour la case Broforce :
-        // appliquee ailleurs elle designerait des poses au hasard.
+        // Toute planche mesurable est choisissable, quelle que soit sa case.
+        //
+        // Le filtre valait tant que la forge n'avait qu'une fenetre de decoupe pour
+        // tout : posee sur une case d'une autre taille elle tombait a cote, et rien
+        // ne permettait de la rattraper. Depuis que chaque calque porte son propre
+        // decalage, une case de 48 ou de 64 se recadre - c'est meme le seul moyen
+        // d'employer une planche qui n'a pas ete decoupee pour cette forge.
         source.CanPick =
-            source.CellWidth == ForgeSlots.SourceCell
-            && source.CellHeight == ForgeSlots.SourceCell;
-
-        source.CanPrefill = source.CanPick && ForgeLayout.Fits(source.Cols, source.Rows);
+            source.CellWidth > 0 && source.CellHeight > 0 && source.FrameCount > 0;
 
         return source;
       }

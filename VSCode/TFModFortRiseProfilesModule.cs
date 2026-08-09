@@ -79,12 +79,12 @@ namespace TFModFortRiseProfiles
           new MenuStateConfiguration { MenuStateType = typeof(UIForgeList) });
       context.Registry.MenuStates.RegisterMenuState("ForgeEdit",
           new MenuStateConfiguration { MenuStateType = typeof(UIForgeEdit) });
-      context.Registry.MenuStates.RegisterMenuState("ForgeSource",
-          new MenuStateConfiguration { MenuStateType = typeof(UIForgeSource) });
       context.Registry.MenuStates.RegisterMenuState("ForgeFrames",
           new MenuStateConfiguration { MenuStateType = typeof(UIForgeFrames) });
       context.Registry.MenuStates.RegisterMenuState("ForgeFramePicker",
           new MenuStateConfiguration { MenuStateType = typeof(UIForgeFramePicker) });
+      context.Registry.MenuStates.RegisterMenuState("ForgeLayers",
+          new MenuStateConfiguration { MenuStateType = typeof(UIForgeLayers) });
       context.Registry.MenuStates.RegisterMenuState("ForgeVoice",
           new MenuStateConfiguration { MenuStateType = typeof(UIForgeVoice) });
       context.Registry.MenuStates.RegisterMenuState("ForgeVoicePicker",

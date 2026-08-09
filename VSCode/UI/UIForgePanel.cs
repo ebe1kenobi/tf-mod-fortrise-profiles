@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
@@ -21,6 +22,9 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public abstract class UIForgePanel : MenuItem
   {
+    /// <summary>Cote maximal d'un apercu a l'ecran, en pixels.</summary>
+    protected const int BoxSize = 112;
+
     protected Vector2 Anchor;
 
     private readonly Vector2 tweenFrom;
@@ -57,6 +61,39 @@ namespace TFModFortRiseProfiles
       Tween tween = Tween.Create(Tween.TweenMode.Oneshot, Ease.CubeIn, 12, true);
       tween.OnUpdate = t => Anchor = Vector2.Lerp(start, tweenFrom, t.Eased);
       Add(tween);
+    }
+
+    /// <summary>
+    /// Agrandissement d'un apercu, deduit de sa taille plutot que fixe.
+    ///
+    /// Un facteur constant convenait tant que toutes les cases faisaient 32 : depuis
+    /// que le vivier en accepte d'autres, le meme quatre donnerait 256 pixels de haut
+    /// pour une case de 64. Le canevas d'une pose grandit d'ailleurs tout seul des
+    /// qu'un calque deborde.
+    ///
+    /// En dessous de un, on divise par deux plutot que par trois ou cinq : une case de
+    /// 128 ne tient pas dans la zone d'apercu et doit etre reduite, mais un facteur
+    /// qui n'est pas une puissance de deux fait disparaitre une colonne de pixels sur
+    /// trois - sur un dessin de seize pixels de large, c'est le personnage qu'on ne
+    /// reconnait plus.
+    /// </summary>
+    protected static float ZoomFor(int width, int height)
+    {
+      int largest = Math.Max(Math.Max(width, height), 1);
+
+      if (largest <= BoxSize)
+      {
+        return Math.Clamp(BoxSize / largest, 1, 6);
+      }
+
+      float zoom = 1f;
+
+      while (largest * zoom > BoxSize)
+      {
+        zoom *= 0.5f;
+      }
+
+      return zoom;
     }
 
     protected override void OnSelect() { }

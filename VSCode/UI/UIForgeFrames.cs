@@ -94,8 +94,12 @@ namespace TFModFortRiseProfiles
             RightText = () => Label(captured),
             OnConfirmed = () => Pick(captured),
             OnSelected = () => thumb.Show(design, captured.Key),
-            OnAlt = () => Clear(captured),
-            AltGuide = "CLEAR"
+
+            // Valider mene au choix d'une image, Alt aux calques deja poses. Le
+            // chemin le plus court reste celui qu'on emprunte a chaque pose ; le
+            // reglage fin, lui, ne sert qu'une fois la pose en place.
+            OnAlt = () => Layers(captured),
+            AltGuide = "CALQUES"
           };
 
           if (string.Equals(slot.Key, EditingSlot, StringComparison.Ordinal))
@@ -177,15 +181,22 @@ namespace TFModFortRiseProfiles
     private void Pick(ForgeSlot slot)
     {
       EditingSlot = slot.Key;
+      UIForgeFramePicker.ReturnToLayers = false;
       Main.State = ModRegisters.MenuState<UIForgeFramePicker>();
     }
 
-    private void Clear(ForgeSlot slot)
+    /// <summary>
+    /// Ouvre les calques de cet emplacement : ordre, cadrage, suppression.
+    ///
+    /// C'est la qu'est parti le vidage, qui occupait cette touche : il y voisine avec
+    /// la suppression d'un seul calque, et vider une pose est de toute facon plus
+    /// rare que la composer.
+    /// </summary>
+    private void Layers(ForgeSlot slot)
     {
-      design.Set(slot.Key, null);
-      ForgeStorage.Save();
-      thumb?.Show(design, slot.Key);
-      Sounds.ui_move1.Play(160f, 1f);
+      EditingSlot = slot.Key;
+      UIForgeLayers.EditingSlot = slot.Key;
+      Main.State = ModRegisters.MenuState<UIForgeLayers>();
     }
   }
 
@@ -203,13 +214,12 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public class UIForgeCellThumb : UIForgePanel
   {
-    private const int Scale = 4;
-
     private Texture2D texture;
-    private int cellWidth;
-    private int cellHeight;
+    private int width;
+    private int height;
     private int windowX;
     private int windowY;
+    private float zoom = 4f;
     private string caption;
 
     public UIForgeCellThumb(Vector2 position) : base(position)
@@ -225,17 +235,15 @@ namespace TFModFortRiseProfiles
         return;
       }
 
-      int layers = ForgeCompose.Count(design, slotKey);
-
-      if (layers == 0)
+      if (ForgeCompose.Count(design, slotKey) == 0)
       {
         caption = "EMPTY";
         return;
       }
 
-      Color[] merged = ForgeCompose.Pose(design, slotKey, out int width, out int height, out int drawn);
+      ForgePose pose = ForgeCompose.Pose(design, slotKey);
 
-      if (merged == null)
+      if (pose == null)
       {
         // Des calques enregistres mais pas une image lisible : la planche a ete
         // renommee ou sortie du vivier. Le dire, plutot que laisser une case noire
@@ -246,17 +254,18 @@ namespace TFModFortRiseProfiles
 
       try
       {
-        texture = new Texture2D(Engine.Instance.GraphicsDevice, width, height);
-        texture.SetData(merged);
-        cellWidth = width;
-        cellHeight = height;
-        windowX = design.WindowX;
-        windowY = design.WindowY;
+        texture = new Texture2D(Engine.Instance.GraphicsDevice, pose.Width, pose.Height);
+        texture.SetData(pose.Pixels);
+        width = pose.Width;
+        height = pose.Height;
+        windowX = pose.WindowX;
+        windowY = pose.WindowY;
+        zoom = ZoomFor(pose.Width, pose.Height);
 
         // Le nom de la case ne veut plus rien dire des qu'il y en a plusieurs : on
         // dit alors combien, ce qui est la seule chose verifiable d'un coup d'oeil.
-        caption = drawn > 1
-            ? drawn + " IMAGES"
+        caption = pose.Drawn > 1
+            ? pose.Drawn + " IMAGES"
             : design.PickOf(slotKey).Cell.ToString().ToUpperInvariant();
       }
       catch (Exception e)
@@ -277,8 +286,8 @@ namespace TFModFortRiseProfiles
     {
       base.Render();
 
-      float boxWidth = cellWidth > 0 ? cellWidth * Scale : ForgeSlots.SourceCell * Scale;
-      float boxHeight = cellHeight > 0 ? cellHeight * Scale : ForgeSlots.SourceCell * Scale;
+      float boxWidth = (width > 0 ? width : ForgeSlots.SourceCell) * zoom;
+      float boxHeight = (height > 0 ? height : ForgeSlots.SourceCell) * zoom;
 
       var corner = new Vector2(Position.X - boxWidth * 0.5f, Position.Y - boxHeight * 0.5f);
       Draw.Rect(corner.X, corner.Y, boxWidth, boxHeight, Color.Black * 0.55f);
@@ -287,14 +296,14 @@ namespace TFModFortRiseProfiles
       if (texture != null && !texture.IsDisposed)
       {
         Draw.SpriteBatch.Draw(texture, corner, null, Color.White, 0f, Vector2.Zero,
-            Scale, SpriteEffects.None, 0f);
+            zoom, SpriteEffects.None, 0f);
 
         // Le cadre de ce que la forge gardera.
         Draw.HollowRect(new Rectangle(
-            (int)(corner.X + windowX * Scale),
-            (int)(corner.Y + windowY * Scale),
-            ForgeSlots.Frame * Scale,
-            ForgeSlots.Frame * Scale), Color.Orange * 0.8f);
+            (int)(corner.X + windowX * zoom),
+            (int)(corner.Y + windowY * zoom),
+            (int)(ForgeSlots.Frame * zoom),
+            (int)(ForgeSlots.Frame * zoom)), Color.Orange * 0.8f);
       }
 
       if (!string.IsNullOrEmpty(caption))
