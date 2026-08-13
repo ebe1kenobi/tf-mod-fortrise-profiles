@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Le choix d'un WAV pour une action de voix.
@@ -49,12 +49,12 @@ namespace TFModFortRiseProfiles
 
       if (design == null || action == null)
       {
-        Main.State = voiceState;
+        MenuNav.Switch(Main, voiceState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeVoicePicker>());
-      Main.BackState = voiceState;
+      Main.BackState = MenuNav.Arrive(Main, voiceState);
       Main.TweenBGCameraToY(2);
 
       Main.Add(new UIPickerHeader(new Vector2(160f, 34f), design.Name, action.Label));
@@ -66,7 +66,7 @@ namespace TFModFortRiseProfiles
 
       // Premiere ligne : revenir au son de la voix de repli. C'est le geste inverse
       // du choix, il doit etre au meme endroit et pas cache sur une touche.
-      UIMenuRow noneRow = MakeRow(rows.Count, "VOIX DE REPLI");
+      UIMenuRow noneRow = MakeRow(rows.Count, "FALLBACK VOICE");
       noneRow.RightText = () => ForgeVoice.FileOf(design, action.Key) == null ? "OUI" : "";
       noneRow.OnConfirmed = () => Choose(null);
       rows.Add(noneRow);
@@ -106,7 +106,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()
@@ -153,7 +156,7 @@ namespace TFModFortRiseProfiles
       ForgeVoice.Assign(design, action.Key, file);
       ForgeStorage.Save();
       Sounds.ui_click.Play(160f, 1f);
-      Main.State = ModRegisters.MenuState<UIForgeVoice>();
+      MenuNav.Switch(Main, ModRegisters.MenuState<UIForgeVoice>());
     }
 
     private void Preview(SoundFile file)
@@ -200,9 +203,9 @@ namespace TFModFortRiseProfiles
 
       string[] lines =
       {
-        "AUCUN SON DANS LA BANQUE",
+        "NO SOUND IN THE BANK",
         "",
-        "DEPOSER DES WAV DANS",
+        "DROP WAV FILES IN",
         "SAVES/EBE1.PROFILES/WAV"
       };
 

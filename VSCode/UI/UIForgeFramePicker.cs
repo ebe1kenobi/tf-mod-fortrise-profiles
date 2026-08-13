@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Le choix d'une image pour un emplacement : d'abord la planche, puis la case.
@@ -32,8 +32,6 @@ namespace TFModFortRiseProfiles
     /// statique plutot qu'un etat passe en parametre : CustomMenuState est construit
     /// par le jeu, on ne lui transmet rien.
     /// </summary>
-    internal static bool ReturnToLayers;
-
     private const float FirstRowY = 52f;
     private const float RowStep = 15f;
     private const float RowX = 30f;
@@ -52,20 +50,23 @@ namespace TFModFortRiseProfiles
     {
     }
 
-    /// <summary>L'ecran d'ou l'on vient, donc celui ou toute sortie ramene.</summary>
-    private MainMenu.MenuState Home =>
-        ReturnToLayers
-            ? ModRegisters.MenuState<UIForgeLayers>()
-            : ModRegisters.MenuState<UIForgeFrames>();
+    /// <summary>
+    /// L'ecran d'ou l'on vient, donc celui ou toute sortie ramene. On y entre depuis
+    /// les poses comme depuis les calques : c'est la pile qui tranche, et non un
+    /// drapeau que les deux appelants devaient penser a poser.
+    /// </summary>
+    private MainMenu.MenuState Home;
 
     public override void Create()
     {
       design = UIForgeList.Editing;
       slot = ForgeSlots.Get(UIForgeFrames.EditingSlot);
 
+      Home = MenuNav.Arrive(Main, ModRegisters.MenuState<UIForgeFrames>());
+
       if (design == null || slot == null)
       {
-        Main.State = Home;
+        MenuNav.Switch(Main, Home);
         return;
       }
 
@@ -204,9 +205,9 @@ namespace TFModFortRiseProfiles
       //
       // Il n'y a rien a confirmer : chaque calque est deja enregistre en arrivant.
       // Cette ligne ne valide pas, elle raccompagne.
-      UIMenuRow doneRow = MakeRow(built.Count, "<< TERMINER");
+      UIMenuRow doneRow = MakeRow(built.Count, "<< DONE");
       doneRow.RightText = Stacked;
-      doneRow.OnConfirmed = () => Main.State = Home;
+      doneRow.OnConfirmed = () => MenuNav.Switch(Main, Home);
 
       // Les autres lignes montrent la case qu'on survole ; celle-ci montre la pose
       // telle qu'elle est devenue. C'est le seul endroit de l'ecran ou l'empilement
@@ -224,8 +225,8 @@ namespace TFModFortRiseProfiles
       // ramener d'ou l'on vient - la liste des poses - et non vers un ecran qu'on n'a
       // jamais traverse.
       // Libelle court : la ligne porte aussi le nom de la planche courante, et
-      // "CHANGER DE PLANCHE" plus un nom de seize caracteres se chevauchaient.
-      UIMenuRow switchRow = MakeRow(built.Count, "<< PLANCHE");
+      // "CHANGE SHEET" plus un nom de seize caracteres se chevauchaient.
+      UIMenuRow switchRow = MakeRow(built.Count, "<< SHEET");
       switchRow.RightText = () => UIForgeEdit.Shorten(source.Name);
       switchRow.OnConfirmed = BuildSheets;
       switchRow.OnSelected = () => thumb?.Release();
@@ -328,7 +329,7 @@ namespace TFModFortRiseProfiles
       design.Set(slot.Key, ForgePick.Of(source.Name, cell));
       design.Source = source.Name;
       ForgeStorage.Save();
-      Main.State = Home;
+      MenuNav.Switch(Main, Home);
     }
 
     private void Stack(ForgeSource source, ForgeCell cell)
@@ -343,15 +344,10 @@ namespace TFModFortRiseProfiles
       Sounds.ui_move2.Play(160f, 1f);
     }
 
-    /// <summary>Le compte d'images d'une planche, suivi de sa case si elle detonne.</summary>
+    /// <summary>Le compte d'images d'une planche.</summary>
     private static string Sized(ForgeSource source)
     {
-      if (source.CellWidth == ForgeSlots.SourceCell && source.CellHeight == ForgeSlots.SourceCell)
-      {
-        return source.FrameCount + "";
-      }
-
-      return source.FrameCount + " - " + source.CellWidth + "x" + source.CellHeight;
+      return source.FrameCount.ToString();
     }
 
     /// <summary>Ce que porte la ligne de sortie : l'etat de la pose.</summary>
@@ -361,10 +357,10 @@ namespace TFModFortRiseProfiles
 
       if (count == 0)
       {
-        return "VIDE";
+        return "EMPTY";
       }
 
-      return count == 1 ? "1 IMAGE" : count + " IMAGES";
+      return count == 1 ? "1 FRAME" : count + " IMAGES";
     }
 
     /// <summary>Ce que porte une case a droite : son rang dans l'empilement, ou rien.</summary>
@@ -377,7 +373,7 @@ namespace TFModFortRiseProfiles
         return "";
       }
 
-      return design.LayersOf(slot.Key).Count == 1 ? "CHOISIE" : "CALQUE " + (rank + 1);
+      return design.LayersOf(slot.Key).Count == 1 ? "PICKED" : "LAYER " + (rank + 1);
     }
 
     /// <summary>
@@ -394,8 +390,7 @@ namespace TFModFortRiseProfiles
       for (int i = 0; i < stack.Count; i++)
       {
         if (stack[i] != null
-            && stack[i].Col == cell.Col
-            && stack[i].Row == cell.Row
+            && stack[i].Cell.Equals(cell)
             && string.Equals(stack[i].Source, source.Name, StringComparison.OrdinalIgnoreCase))
         {
           return i;
@@ -419,7 +414,12 @@ namespace TFModFortRiseProfiles
     private int height;
     private int windowX;
     private int windowY;
-    private float zoom = 4f;
+    /// <summary>
+    /// Derive et non memorise : le facteur peut changer a tout moment (gachette
+    /// gauche), et un zoom fige a l'affichage n'aurait bouge qu'au changement
+    /// d'ecran.
+    /// </summary>
+    private float zoom => ZoomFor(width, height);
 
     public UIForgeCellPreview(Vector2 position) : base(position)
     {
@@ -436,7 +436,9 @@ namespace TFModFortRiseProfiles
     {
       Release();
 
-      Color[] pixels = ForgeBank.ReadCell(source, cell);
+      // Meme lecture que la composition : l'apercu doit montrer ce qui sera
+      // reellement retenu, mise a l'echelle comprise.
+      Color[] pixels = ForgeBank.ReadCellFitted(source, cell, out var size);
 
       if (pixels == null)
       {
@@ -445,7 +447,7 @@ namespace TFModFortRiseProfiles
 
       ForgeNudge sheet = design.NudgeOf(source.Name);
 
-      Adopt(pixels, source.CellWidth, source.CellHeight,
+      Adopt(pixels, size.X, size.Y,
           design.WindowX - sheet.X, design.WindowY - sheet.Y);
     }
 
@@ -474,7 +476,6 @@ namespace TFModFortRiseProfiles
         this.height = height;
         this.windowX = windowX;
         this.windowY = windowY;
-        zoom = ZoomFor(width, height);
       }
       catch (Exception e)
       {
@@ -509,11 +510,7 @@ namespace TFModFortRiseProfiles
       Draw.SpriteBatch.Draw(texture, corner, null, Color.White, 0f, Vector2.Zero,
           zoom, SpriteEffects.None, 0f);
 
-      Draw.HollowRect(new Rectangle(
-          (int)(corner.X + windowX * zoom),
-          (int)(corner.Y + windowY * zoom),
-          (int)(ForgeSlots.Frame * zoom),
-          (int)(ForgeSlots.Frame * zoom)), Color.Orange * 0.8f);
+      DrawVanillaFrame(corner, windowX + ForgeSlots.AnchorX, windowY + ForgeSlots.AnchorY, zoom);
     }
 
   }
@@ -536,10 +533,10 @@ namespace TFModFortRiseProfiles
     {
       base.Render();
 
-      Draw.OutlineTextCentered(TFGame.Font, "AUCUNE PLANCHE DANS LE VIVIER",
+      Draw.OutlineTextCentered(TFGame.Font, "NO SHEET IN THE BANK",
           Position, Color.Gray, Color.Black);
 
-      Draw.OutlineTextCentered(TFGame.Font, "DEPOSER DES IMAGES DECOUPEES DANS",
+      Draw.OutlineTextCentered(TFGame.Font, "DROP SLICED FRAMES IN",
           Position + new Vector2(0f, 14f), Color.Gray, Color.Black);
 
       // Le chemin est relu a chaque image : un fichier sprites.path peut le deplacer,
@@ -566,7 +563,7 @@ namespace TFModFortRiseProfiles
 
       Draw.OutlineTextCentered(TFGame.Font, MenuText.Safe(UIForgeEdit.Shorten(sheet)),
           Position, Color.Gray, Color.Black);
-      Draw.OutlineTextCentered(TFGame.Font, "AUCUNE IMAGE",
+      Draw.OutlineTextCentered(TFGame.Font, "NO FRAME",
           Position + new Vector2(0f, 12f), Color.Gray, Color.Black);
     }
 
@@ -605,8 +602,8 @@ namespace TFModFortRiseProfiles
       }
 
       string line = hidden == 1
-          ? "1 PLANCHE MASQUEE - INDEX ILLISIBLE OU VIDE"
-          : hidden + " PLANCHES MASQUEES - INDEX ILLISIBLE OU VIDE";
+          ? "1 SHEET HIDDEN - UNREADABLE OR EMPTY INDEX"
+          : hidden + " SHEETS HIDDEN - UNREADABLE OR EMPTY INDEX";
 
       Draw.OutlineTextCentered(TFGame.Font, MenuText.Safe(line), Position,
           Color.Gray, Color.Black);

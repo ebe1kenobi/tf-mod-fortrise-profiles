@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Le profil vu par les ecrans de couleur : l'essai actif, et les planches de

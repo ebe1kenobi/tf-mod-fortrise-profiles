@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les essais de couleurs du profil, pour l'archer et le costume courants.
@@ -40,12 +40,12 @@ namespace TFModFortRiseProfiles
       profile = UIProfilesMenu.Editing;
       if (profile == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+        MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileTrials>());
-      Main.BackState = ModRegisters.MenuState<UIProfileEdit>();
+      Main.BackState = MenuNav.Arrive(Main, ModRegisters.MenuState<UIProfileEdit>());
       Main.TweenBGCameraToY(2);
 
       // Les profils d'avant les essais ont une palette unique : elle devient un essai
@@ -57,7 +57,9 @@ namespace TFModFortRiseProfiles
       Main.Add(preview);
       preview.Rebuild(profile);
 
-      Build(0);
+      // Zero n'est le bon rang qu'a la premiere visite : au retour d'un sous-ecran,
+      // on veut la ligne qu'on avait quittee.
+      Build(MenuNav.Resume(Main, int.MaxValue));
     }
 
     public override void Destroy()
@@ -76,7 +78,7 @@ namespace TFModFortRiseProfiles
 
       UIMenuRow import = MakeRow(items.Count, "+ IMPORT");
       import.RightText = () => ProfileTrials.Exported().Count.ToString();
-      import.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileTrialImport>();
+      import.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileTrialImport>());
       items.Add(import);
 
       foreach (ColorTrial trial in ProfileTrials.For(profile))
@@ -103,6 +105,7 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (items.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
 
+      MenuNav.Track(Main, items);
       MenuItem toSelect = items[Math.Clamp(selectIndex, 0, items.Count - 1)];
       Main.ToStartSelected = toSelect;
 
@@ -169,7 +172,7 @@ namespace TFModFortRiseProfiles
       ColorEditing.Subject = new ProfileColorSubject(profile, trial);
       ColorEditing.BackState = ModRegisters.MenuState<UIProfileTrials>();
 
-      Main.State = ModRegisters.MenuState<UIProfileColorGroups>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIProfileColorGroups>());
     }
 
     private void AskNewTrial()
@@ -198,7 +201,10 @@ namespace TFModFortRiseProfiles
 
       void Restore()
       {
-        Main.CanAct = true;
+        // Pas avant l'image suivante : voir Dialogs.Reactivate. Rendre CanAct tout de
+        // suite ferait remonter d'un ecran quand on ferme cette liste par le retour.
+        Dialogs.Reactivate(Main);
+
         if (selected.Scene != null)
         {
           selected.Selected = true;
@@ -262,12 +268,12 @@ namespace TFModFortRiseProfiles
       profile = UIProfilesMenu.Editing;
       if (profile == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+        MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileTrialImport>());
-      Main.BackState = listState;
+      Main.BackState = MenuNav.Arrive(Main, listState);
       Main.TweenBGCameraToY(2);
 
       List<string> files = ProfileTrials.Exported();
@@ -304,7 +310,7 @@ namespace TFModFortRiseProfiles
 
             ProfileTrials.Import(profile, peek);
             ProfileStorage.Save();
-            Main.State = listState;
+            MenuNav.Switch(Main, listState);
           }
         };
 
@@ -329,7 +335,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()

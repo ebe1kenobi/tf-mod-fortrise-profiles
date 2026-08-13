@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Un groupe de teintes voisines et la nuance qui le represente.</summary>
   public sealed class ColorFamily

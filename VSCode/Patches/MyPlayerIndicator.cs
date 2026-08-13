@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Nom du joueur sous la fleche qui le designe au debut d'une manche.

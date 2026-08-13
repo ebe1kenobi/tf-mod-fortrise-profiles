@@ -6,7 +6,7 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Substitue en jeu les textures recolorees du profil a celles de l'archer.

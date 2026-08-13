@@ -1,4 +1,4 @@
-﻿# Extrait tous les archers du jeu sous forme de mods FortRise autonomes.
+# Extrait tous les archers du jeu sous forme de mods FortRise autonomes.
 #
 # Un repertoire par personnage, contenant ses images, ses definitions de sprites et
 # son archerData.xml - donc un mod qui se depose tel quel dans Mods/ et se modifie
@@ -171,6 +171,98 @@ function Save-Xml($doc, $relative) {
   $doc.Save($path)
 }
 
+# --- la voix -----------------------------------------------------------------
+
+# Les archers du jeu ne declarent pas leurs sons : <SFX> porte un ENTIER, l'index
+# d'un jeu de sons que le jeu tient en dur. Un mod qui reprend cet entier ne
+# recopie donc rien - il pointe vers le jeu, et l'archer extrait n'a pas de voix a
+# lui.
+#
+# Cette table est la correspondance de Sounds.Initialize : elle ne se devine pas,
+# l'ordre des prefixes n'etant pas celui des archers. Les jeux numerotes (A2, B2...)
+# sont ceux des costumes ALT ; ils sont INCOMPLETS et retombent sur leur jeu de
+# base, exactement comme le jeu le fait avec le second argument de CharacterSounds.
+$sfxSets = @{
+  0  = @{ Prefix = "CHAR_B";  Fallback = $null }
+  1  = @{ Prefix = "CHAR_C";  Fallback = $null }
+  2  = @{ Prefix = "CHAR_D";  Fallback = $null }
+  3  = @{ Prefix = "CHAR_A";  Fallback = $null }
+  4  = @{ Prefix = "CHAR_F";  Fallback = $null }
+  5  = @{ Prefix = "CHAR_E";  Fallback = $null }
+  6  = @{ Prefix = "CHAR_H";  Fallback = $null }
+  7  = @{ Prefix = "CHAR_G";  Fallback = $null }
+  8  = @{ Prefix = "CHAR_I";  Fallback = $null }
+  9  = @{ Prefix = "CHAR_E2"; Fallback = 5 }
+  10 = @{ Prefix = "CHAR_B2"; Fallback = 0 }
+  11 = @{ Prefix = "CHAR_A2"; Fallback = 3 }
+  12 = @{ Prefix = "CHAR_D2"; Fallback = 2 }
+  13 = @{ Prefix = "CHAR_I2"; Fallback = 8 }
+}
+
+# Les deux packs, comme pour les atlas : les jeux de sons des costumes ALT sont
+# dans DarkWorldContent, pas dans le contenu de base.
+$sfxDirs = @(
+  (Join-Path $Game "Content\SFX"),
+  (Join-Path $Game "DarkWorldContent\SFX")
+)
+
+# Tous les WAV d'un prefixe, par ACTION (le nom sans le prefixe).
+function Get-SfxSet($prefix) {
+  $found = [ordered]@{}
+
+  foreach ($dir in $sfxDirs) {
+    if (-not (Test-Path $dir)) { continue }
+
+    foreach ($file in Get-ChildItem $dir -Filter "${prefix}_*.wav") {
+      $action = $file.BaseName.Substring($prefix.Length + 1)
+      if (-not $found.Contains($action)) { $found[$action] = $file.FullName }
+    }
+  }
+
+  $found
+}
+
+# Recopie la voix d'un archer dans le mod, et remplace l'entier par un motif.
+#
+# Le repertoire porte l'identifiant du bloc : un archer et son costume ALT ont
+# chacun leur jeu, et leurs actions portent les memes noms - un dossier commun les
+# ferait s'ecraser.
+function Export-Voice($clone, $id) {
+  $node = $clone["SFX"]
+  if (-not $node) { return }
+
+  $index = 0
+  if (-not [int]::TryParse($node.InnerText.Trim(), [ref]$index)) { return }
+  if (-not $sfxSets.Contains($index)) { return }
+
+  $set = $sfxSets[$index]
+  $files = Get-SfxSet $set.Prefix
+
+  # Le jeu de base comble ce que le jeu ALT ne fournit pas. Sans ce report, un
+  # costume ALT extrait n'aurait que cinq sons sur vingt-trois.
+  if ($null -ne $set.Fallback) {
+    $base = Get-SfxSet $sfxSets[$set.Fallback].Prefix
+    foreach ($action in $base.Keys) {
+      if (-not $files.Contains($action)) { $files[$action] = $base[$action] }
+    }
+  }
+
+  if ($files.Count -eq 0) { return }
+
+  $dir = Join-Path $script:root "Content\SFX\$id"
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+  foreach ($action in $files.Keys) {
+    Copy-Item $files[$action] (Join-Path $dir "$action.wav") -Force
+  }
+
+  # Le motif que le chargeur developpe : {action} devient la cle de chaque son. Il
+  # remplace l'entier, donc l'archer ne depend plus des sons du jeu.
+  $node.InnerText = "Content/SFX/$id/{action}.wav"
+
+  $script:voices += "$id ($($set.Prefix), $($files.Count))"
+}
+
 # --- un personnage -----------------------------------------------------------
 
 function Export-Character($name, $entries) {
@@ -202,6 +294,8 @@ function Export-Character($name, $entries) {
     if ($entry.Name -eq "AltArcher") { $clone.SetAttribute("Alt", "@$parentId") }
     elseif ($entry.Name -eq "SecretArcher") { $clone.SetAttribute("Secret", "@$parentId") }
     else { $parentId = $id }
+
+    Export-Voice $clone $id
 
     # Sprites : chaque enfant nomme une definition a recopier.
     if ($clone["Sprites"]) {
@@ -282,7 +376,8 @@ function Export-Character($name, $entries) {
   Set-Content $metaPath ($meta | ConvertTo-Json) -Encoding UTF8
 
   $images = (Get-ChildItem $script:root -Recurse -Filter *.png).Count
-  "{0,-8} {1} entrees, {2,3} images" -f $name, $entries.Count, $images
+  $sounds = (Get-ChildItem $script:root -Recurse -Filter *.wav).Count
+  "{0,-8} {1} entrees, {2,3} images, {3,3} sons" -f $name, $entries.Count, $images, $sounds
 }
 
 # --- parcours ----------------------------------------------------------------
@@ -318,11 +413,16 @@ foreach ($name in $characters.Keys) {
 
   $script:missing = @()
   $script:repaired = @()
+  $script:voices = @()
   Write-Host (Export-Character $name $characters[$name])
   if ($script:repaired.Count -gt 0) {
     Write-Host ("         variantes d'equipe rabattues sur la texture de base : " + (($script:repaired | Sort-Object -Unique) -join ", "))
   }
 
+
+  if ($script:voices.Count -gt 0) {
+    Write-Host ("         voix copiees : " + ($script:voices -join ", "))
+  }
 
   if ($script:missing.Count -gt 0) {
     Write-Host ("         introuvables : " + (($script:missing | Sort-Object -Unique) -join ", "))

@@ -1,4 +1,4 @@
-namespace TFModFortRiseProfiles;
+namespace TFModFortRiseArcher;
 
 /// <summary>
 /// Ce qu'un autre mod peut demander a Profiles.

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Le nom affiche pour un emplacement joueur, ou qu'on l'affiche.

@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Fiche d'un profil : nom, archer prefere, costume, suppression.
@@ -40,14 +40,14 @@ namespace TFModFortRiseProfiles
       {
         // Peut arriver si l'ecran est atteint autrement que par la liste. Rien a
         // editer : on repart d'ou on aurait du venir.
-        Main.State = listState;
+        MenuNav.Switch(Main, listState);
         return;
       }
 
       saved = false;
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileEdit>());
 
-      Main.BackState = listState;
+      Main.BackState = MenuNav.Arrive(Main, listState);
       Main.TweenBGCameraToY(2);
 
       preview = new UIProfilePreview(PreviewPosition);
@@ -74,29 +74,67 @@ namespace TFModFortRiseProfiles
       costumeRow.OnConfirmed = ToggleCostume;
       rows.Add(costumeRow);
 
+      // Seulement quand Aura repond : sans lui, la liste des pouvoirs serait vide
+      // et la rubrique ne proposerait rien. La fiche tient tout juste dans la
+      // hauteur d'ecran, autant ne pas y laisser une ligne inerte.
+      if (PowerImport.Available)
+      {
+        // Deux rubriques, une par gachette du haut : le mod Power donne un
+        // emplacement a chacune, et le vol est l'un des pouvoirs proposes. Les
+        // libelles nomment la touche plutot que le rang - "POWER 2" ne dirait pas
+        // ou appuyer.
+        UIMenuRow powerRow = MakeRow(rows.Count, "POWER LB");
+        powerRow.RightText = () => PowerLabel(profile.Power);
+        powerRow.OnLeft = () => CyclePower(-1, false);
+        powerRow.OnRight = () => CyclePower(1, false);
+        powerRow.OnConfirmed = () => CyclePower(1, false);
+        rows.Add(powerRow);
+
+        UIMenuRow power2Row = MakeRow(rows.Count, "POWER RB");
+        power2Row.RightText = () => PowerLabel(profile.Power2);
+        power2Row.OnLeft = () => CyclePower(-1, true);
+        power2Row.OnRight = () => CyclePower(1, true);
+        power2Row.OnConfirmed = () => CyclePower(1, true);
+        rows.Add(power2Row);
+      }
+
+      // La musique de victoire, et non un son de plus : elle remplace la piste de fin
+      // de manche au lieu de se jouer par-dessus, elle n'a donc rien a faire dans
+      // l'ecran des sons - ou elle aurait pourtant sa case WIN juste a cote.
+      UIMenuRow musicRow = MakeRow(rows.Count, "VICTORY MUSIC");
+      musicRow.RightText = () => ProfileMusic.Label(profile);
+      musicRow.OnLeft = () => CycleMusic(-1);
+      musicRow.OnRight = () => CycleMusic(1);
+      // Valider ouvre la liste des fichiers ; les fleches font defiler les pistes du
+      // jeu. Les treize pistes se connaissent par coeur et se prennent au vol, alors
+      // qu'un fichier apporte se cherche dans une liste - il y en a autant qu'on en
+      // depose.
+      musicRow.OnConfirmed = PickMusicFile;
+      rows.Add(musicRow);
+
       UIMenuRow soundsRow = MakeRow(rows.Count, "SOUNDS");
       soundsRow.RightText = TotalSounds;
-      soundsRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileSounds>();
+      soundsRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileSounds>());
       rows.Add(soundsRow);
 
       UIMenuRow imagesRow = MakeRow(rows.Count, "IMAGES");
       imagesRow.RightText = CountImages;
-      imagesRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileImages>();
+      imagesRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileImages>());
       rows.Add(imagesRow);
 
       UIMenuRow colorsRow = MakeRow(rows.Count, "COLORS");
       colorsRow.RightText = CountTrials;
-      colorsRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileTrials>();
+      colorsRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileTrials>());
       rows.Add(colorsRow);
 
       UIMenuRow gamepadRow = MakeRow(rows.Count, "GAMEPAD");
       gamepadRow.RightText = () => profile.Gamepad == null ? "GLOBAL" : "CUSTOM";
-      gamepadRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileGamepad>();
+      gamepadRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileGamepad>());
       rows.Add(gamepadRow);
 
       UIMenuRow keyboardRow = MakeRow(rows.Count, "KEYBOARD");
       keyboardRow.RightText = () => profile.Keyboard == null ? "GLOBAL" : "CUSTOM";
-      keyboardRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileKeyboard>();
+      keyboardRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileKeyboard>());
       rows.Add(keyboardRow);
 
       UIMenuRow saveRow = MakeRow(rows.Count, "SAVE");
@@ -128,7 +166,10 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
 
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()
@@ -142,6 +183,84 @@ namespace TFModFortRiseProfiles
       // debut de la transition, mais les lignes de l'ecran sortant continuent d'etre
       // dessinees une douzaine d'images pendant qu'elles glissent hors champ, et
       // leurs libelles relisent le profil a chaque image.
+    }
+
+    /// <summary>
+    /// Libelle du pouvoir choisi. "DEFAULT" quand le profil n'en impose aucun :
+    /// c'est alors le pouvoir par defaut regle dans Aura qui s'applique, et ce
+    /// n'est pas la meme chose que "aucun pouvoir".
+    /// </summary>
+    private string PowerLabel(string powerId)
+    {
+      return string.IsNullOrEmpty(powerId)
+          ? "DEFAULT"
+          : PowerImport.TitleOf(powerId).ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Fait defiler les pouvoirs d'un emplacement, avec "aucun choix" comme premiere
+    /// entree du cycle. Un profil doit pouvoir revenir au defaut du mod Power sans
+    /// qu'on ait a le supprimer.
+    /// </summary>
+    /// <param name="second">Faux pour l'emplacement LB, vrai pour RB.</param>
+    private void CyclePower(int direction, bool second)
+    {
+      string[] ids = PowerImport.PowerIds();
+      if (ids.Length == 0)
+      {
+        return;
+      }
+
+      string current = second ? profile.Power2 : profile.Power;
+
+      // Position dans le cycle : 0 = DEFAULT, puis les pouvoirs. Un identifiant
+      // inconnu - pouvoir retire depuis l'enregistrement - est traite comme DEFAULT.
+      int position = 0;
+      for (int i = 0; i < ids.Length; i++)
+      {
+        if (string.Equals(ids[i], current, StringComparison.OrdinalIgnoreCase))
+        {
+          position = i + 1;
+          break;
+        }
+      }
+
+      int count = ids.Length + 1;
+      position = (position + direction % count + count) % count;
+
+      string chosen = position == 0 ? "" : ids[position - 1];
+      if (second)
+      {
+        profile.Power2 = chosen;
+      }
+      else
+      {
+        profile.Power = chosen;
+      }
+
+      Sounds.ui_move1.Play(160f, 1f);
+    }
+
+    /// <summary>
+    /// Fait defiler la musique de victoire : ARCHER, puis les pistes du jeu, puis les
+    /// fichiers deposes dans la banque.
+    /// </summary>
+    private void CycleMusic(int direction)
+    {
+      profile.VictoryMusic = ProfileMusic.Next(profile.VictoryMusic, direction);
+      Sounds.ui_move1.Play(160f, 1f);
+    }
+
+    /// <summary>Ouvre la liste des fichiers de la banque pour ce profil.</summary>
+    private void PickMusicFile()
+    {
+      ProfileData captured = profile;
+
+      MusicEditing.Subject = DisplayName(captured);
+      MusicEditing.Get = () => captured.VictoryMusic;
+      MusicEditing.Set = value => captured.VictoryMusic = value;
+
+      MenuNav.Push(Main, ModRegisters.MenuState<UIMusicPicker>());
     }
 
     private UIMenuRow MakeRow(int index, string label)
@@ -277,7 +396,7 @@ namespace TFModFortRiseProfiles
     {
       ProfileStorage.Save();
       saved = true;
-      Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+      MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
     }
 
     private string CostumeLabel()
@@ -308,7 +427,7 @@ namespace TFModFortRiseProfiles
           {
             ProfileStorage.Remove(deleted);
             UIProfilesMenu.Editing = null;
-            Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+            MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
           });
     }
   }

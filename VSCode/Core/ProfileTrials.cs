@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Gestion des essais de couleurs d'un profil : lesquels existent pour l'archer
@@ -224,7 +224,7 @@ namespace TFModFortRiseProfiles
     // ------------------------------------------------------------------
 
     public static string PoolDir =>
-        Path.Combine(TFModFortRiseProfilesModule.Instance.Context.Storage.StoragePath, PoolDirName);
+        Path.Combine(TFModFortRiseArcherModule.Instance.Context.Storage.StoragePath, PoolDirName);
 
     /// <summary>
     /// Ecrit l'essai dans le vivier partage, en JSON.

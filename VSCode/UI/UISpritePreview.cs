@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Xml;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Le sprite de l'archer, anime et a sa taille de jeu, avec les couleurs du profil.

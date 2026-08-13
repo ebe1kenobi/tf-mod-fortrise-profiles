@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les six emplacements d'image d'un profil, avec un apercu de celui qui est
@@ -37,12 +37,12 @@ namespace TFModFortRiseProfiles
       profile = UIProfilesMenu.Editing;
       if (profile == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+        MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileImages>());
-      Main.BackState = ModRegisters.MenuState<UIProfileEdit>();
+      Main.BackState = MenuNav.Arrive(Main, ModRegisters.MenuState<UIProfileEdit>());
       Main.TweenBGCameraToY(2);
 
       ProfileImages.RefreshPool();
@@ -65,7 +65,7 @@ namespace TFModFortRiseProfiles
           OnConfirmed = () =>
           {
             EditingSlot = captured;
-            Main.State = ModRegisters.MenuState<UIProfileImagePicker>();
+            MenuNav.Push(Main, ModRegisters.MenuState<UIProfileImagePicker>());
           },
           OnAlt = () =>
           {
@@ -96,7 +96,10 @@ namespace TFModFortRiseProfiles
       Main.Add(new UIImagePoolHint(new Vector2(160f, 224f)));
 
       Main.MaxUICameraY = 0f;
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()

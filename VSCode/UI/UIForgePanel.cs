@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Panneau immobile pose a cote d'une liste : apercu, vignette, message.
@@ -41,10 +41,22 @@ namespace TFModFortRiseProfiles
       tweenFrom = from;
     }
 
+    /// <summary>
+    /// Vrai si ce panneau laisse changer le facteur d'agrandissement. Reserve a
+    /// l'ecran des poses : ailleurs, la gachette gauche sert deja a autre chose.
+    /// </summary>
+    protected virtual bool AllowZoomToggle => false;
+
     public override void Update()
     {
       base.Update();
       Position = MenuCamera.Fixed(MainMenu, Anchor);
+
+      if (AllowZoomToggle && ForgeZoom.PressedToggle())
+      {
+        ForgeZoom.Cycle();
+        Sounds.ui_move2.Play(160f, 1f);
+      }
     }
 
     public override void TweenIn()
@@ -79,21 +91,54 @@ namespace TFModFortRiseProfiles
     /// </summary>
     protected static float ZoomFor(int width, int height)
     {
+      return ZoomFor(width, height, BoxSize);
+    }
+
+    /// <summary>La meme chose, pour un panneau dont la zone n'a pas la taille commune.</summary>
+    protected static float ZoomFor(int width, int height, float box)
+    {
       int largest = Math.Max(Math.Max(width, height), 1);
 
-      if (largest <= BoxSize)
-      {
-        return Math.Clamp(BoxSize / largest, 1, 6);
-      }
+      // Part du facteur choisi par le joueur - 1 par defaut, donc la TAILLE REELLE
+      // du sprite tel qu'il sera en jeu. C'est ce qui permet de juger un archer
+      // sans lancer une partie : un apercu agrandi flatte toujours, et on ne voit
+      // qu'a l'export que le personnage est trop gros.
+      float zoom = ForgeZoom.Factor;
 
-      float zoom = 1f;
-
-      while (largest * zoom > BoxSize)
+      // Reduit malgre tout ce qui ne tiendrait pas dans la zone : une planche en
+      // ilots peut donner des images de 152 pixels. Par moities, jamais par un
+      // facteur quelconque - un rapport qui n'est pas une puissance de deux fait
+      // disparaitre une colonne de pixels sur trois.
+      while (largest * zoom > box)
       {
         zoom *= 0.5f;
       }
 
       return zoom;
+    }
+
+    /// <summary>
+    /// Le cadre orange : la place que tiendrait un archer du jeu, pose sur la meme
+    /// ancre que le dessin.
+    ///
+    /// Il ne decoupe rien. Depuis que le cadre reel se mesure sur les images
+    /// choisies, ce rectangle ne sert plus qu'a comparer - et c'est justement pour
+    /// cela qu'il vaut mieux qu'il ait la taille d'un archer d'origine plutot que
+    /// celle de notre fenetre : la question qu'on se pose devant une pose reprise
+    /// ailleurs est de combien elle depasse un personnage du jeu.
+    ///
+    /// Cale sur l'ancre et non sur un coin : deux rectangles de tailles differentes
+    /// ne se comparent que s'ils reposent au meme endroit, ici les pieds au sol.
+    /// </summary>
+    /// <param name="corner">Coin haut-gauche de l'image dessinee, a l'ecran.</param>
+    /// <param name="anchorX">Ou tombe l'ancre dans l'image, en pixels d'image.</param>
+    protected static void DrawVanillaFrame(Vector2 corner, float anchorX, float anchorY, float zoom)
+    {
+      Draw.HollowRect(new Rectangle(
+          (int)(corner.X + (anchorX - ForgeSlots.VanillaAnchorX) * zoom),
+          (int)(corner.Y + (anchorY - ForgeSlots.VanillaAnchorY) * zoom),
+          (int)(ForgeSlots.VanillaWidth * zoom),
+          (int)(ForgeSlots.VanillaHeight * zoom)), Color.Orange * 0.8f);
     }
 
     protected override void OnSelect() { }

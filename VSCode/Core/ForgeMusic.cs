@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// La musique de victoire d'un archer forge.
@@ -32,19 +32,19 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public static readonly (string Key, string Label)[] Tracks =
     {
-      ("Green", "VERT"),
-      ("Blue", "BLEU"),
-      ("Pink", "ROSE"),
+      ("Green", "GREEN"),
+      ("Blue", "BLUE"),
+      ("Pink", "PINK"),
       ("Orange", "ORANGE"),
       ("OrangeAlt", "ORANGE ALT"),
-      ("White", "BLANC"),
-      ("WhiteAlt", "BLANC ALT"),
-      ("Yellow", "JAUNE"),
+      ("White", "WHITE"),
+      ("WhiteAlt", "WHITE ALT"),
+      ("Yellow", "YELLOW"),
       ("Cyan", "CYAN"),
-      ("Purple", "VIOLET"),
-      ("Red", "ROUGE"),
+      ("Purple", "PURPLE"),
+      ("Red", "RED"),
       ("Kyle", "KYLE"),
-      ("Team", "EQUIPE")
+      ("Team", "TEAM")
     };
 
     // ------------------------------------------------------------------
@@ -65,7 +65,7 @@ namespace TFModFortRiseProfiles
     {
       get
       {
-        string root = TFModFortRiseProfilesModule.Instance.Context.Storage.StoragePath;
+        string root = TFModFortRiseArcherModule.Instance.Context.Storage.StoragePath;
         return Path.Combine(root, BankDirName);
       }
     }
@@ -73,38 +73,83 @@ namespace TFModFortRiseProfiles
     /// <summary>
     /// Les fichiers deposes, par nom. WAV et OGG : ce sont les deux formats que le
     /// jeu sait lire pour une piste.
+    ///
+    /// Les DEUX banques sont lues, celle des musiques et celle des sons. Un jingle de
+    /// victoire est un WAV comme un autre, et obliger a le recopier dans un second
+    /// dossier ne servirait qu'a expliquer pourquoi il y a deux dossiers. A nom egal,
+    /// celui de la banque de musiques l'emporte - c'est la qu'on l'a range expres.
     /// </summary>
     public static List<string> BankFiles()
     {
       var files = new List<string>();
+      var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+      Collect(BankDir, files, seen, create: true);
+      Collect(ProfileSfx.PoolDir, files, seen, create: false);
+
+      files.Sort(StringComparer.OrdinalIgnoreCase);
+      return files;
+    }
+
+    private static void Collect(string directory, List<string> into, HashSet<string> seen, bool create)
+    {
       try
       {
-        if (!Directory.Exists(BankDir))
+        if (!Directory.Exists(directory))
         {
-          // Cree au premier passage : personne ne doit deviner le chemin.
-          Directory.CreateDirectory(BankDir);
-          return files;
+          if (create)
+          {
+            // Cree au premier passage : personne ne doit deviner le chemin.
+            Directory.CreateDirectory(directory);
+          }
+
+          return;
         }
 
-        foreach (string path in Directory.GetFiles(BankDir))
+        foreach (string path in Directory.GetFiles(directory))
         {
           string extension = Path.GetExtension(path).ToLowerInvariant();
 
-          if (extension == ".wav" || extension == ".ogg")
+          if (extension != ".wav" && extension != ".ogg")
           {
-            files.Add(Path.GetFileName(path));
+            continue;
+          }
+
+          string name = Path.GetFileName(path);
+
+          if (seen.Add(name))
+          {
+            into.Add(name);
           }
         }
-
-        files.Sort(StringComparer.OrdinalIgnoreCase);
       }
       catch (Exception e)
       {
         Log.Error($"[Forge] banque de musiques illisible : {e.Message}");
       }
+    }
 
-      return files;
+    /// <summary>
+    /// Chemin complet d'un fichier de musique, dans l'une ou l'autre banque, ou null.
+    /// </summary>
+    public static string FindFile(string file)
+    {
+      if (string.IsNullOrEmpty(file))
+      {
+        return null;
+      }
+
+      foreach (string directory in new[] { BankDir, ProfileSfx.PoolDir })
+      {
+        string path = Path.Combine(directory, file);
+
+        if (File.Exists(path))
+        {
+          return path;
+        }
+      }
+
+      return null;
     }
 
     public static bool IsFile(string value)
@@ -120,15 +165,7 @@ namespace TFModFortRiseProfiles
     /// <summary>Chemin complet du fichier choisi, ou null s'il a disparu.</summary>
     public static string FilePathOf(ForgeDesign design)
     {
-      string file = design == null ? null : FileNameOf(design.VictoryMusic);
-
-      if (file == null)
-      {
-        return null;
-      }
-
-      string path = Path.Combine(BankDir, file);
-      return File.Exists(path) ? path : null;
+      return FindFile(design == null ? null : FileNameOf(design.VictoryMusic));
     }
 
     /// <summary>
@@ -199,7 +236,7 @@ namespace TFModFortRiseProfiles
         // laisser son nom laisserait croire le contraire.
         if (FilePathOf(design) == null)
         {
-          return "INTROUVABLE";
+          return "FILE MISSING";
         }
 
         // Le mot dit ce que l'essai a chaud ne pourra pas faire entendre, la ou on

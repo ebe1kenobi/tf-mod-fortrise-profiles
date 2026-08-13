@@ -7,10 +7,10 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
-  /// Insere une lame PROFILES dans le menu principal, entre MODS et OPTIONS.
+  /// Insere une lame ARCHER dans le menu principal, entre MODS et OPTIONS.
   ///
   /// FortRise remplace deja CreateMain() en entier (MonoModReplace) pour y glisser
   /// sa lame MODS. Le repatcher par transpileur reviendrait a parier sur son IL, qui
@@ -30,7 +30,7 @@ namespace TFModFortRiseProfiles
   public class MyMainMenu : IHookable
   {
     private const float BladeSpacing = 18f;
-    private const string ProfilesLabel = "PROFILES";
+    private const string ProfilesLabel = "ARCHER";
     private const string ModsLabel = "MODS";
     private const string OptionsLabel = "OPTIONS";
 
@@ -78,24 +78,24 @@ namespace TFModFortRiseProfiles
 
       // Effet de bord assume : FortRise dessine sa pastille "NEW!" de mises a jour a
       // une ordonnee fixe, calee sur la lame la plus haute telle qu'il l'a posee.
-      // Elle designe donc PROFILES et non MODS quand des mises a jour attendent. Les
+      // Elle designe donc ARCHER et non MODS quand des mises a jour attendent. Les
       // lames se suivent sans interstice et QUIT touche deja le bas de l'ecran : il
       // n'y a pas de place pour s'inserer sans deplacer MODS. Le choix est entre
       // cette pastille mal calee de temps en temps et une lame ailleurs qu'entre
-      // MODS et OPTIONS ; pour ce dernier cas, poser PROFILES en profilesY -
+      // MODS et OPTIONS ; pour ce dernier cas, poser ARCHER en profilesY -
       // BladeSpacing et ne pas deplacer MODS.
       float profilesY = mods.Position.Y;
       MoveBladeToY(mods, profilesY - BladeSpacing);
 
       var profiles = new BladeButton(profilesY, ProfilesLabel, () =>
       {
-        menu.State = ModRegisters.MenuState<UIProfilesMenu>();
+        MenuNav.Open(menu, ModRegisters.MenuState<UIProfilesMenu>());
       });
 
       // Abscisse d'origine, et non le retrait de 20 pixels que FortRise applique a sa
       // lame MODS : le libelle est aligne a droite depuis Position.X + 85, si bien
-      // que decaler la lame decale la fin du texte. "MODS" y survit, "PROFILES"
-      // deborde par la gauche et se fait rogner par le bord de l'ecran.
+      // que decaler la lame decale la fin du texte. "MODS" y survit, un libelle
+      // plus long deborde par la gauche et se fait rogner par le bord de l'ecran.
       menu.Add(profiles);
 
       mods.DownItem = profiles;
@@ -104,7 +104,7 @@ namespace TFModFortRiseProfiles
       profiles.RightItem = mods.RightItem;
       options.UpItem = profiles;
 
-      // Au retour de l'ecran des profils, c'est la lame PROFILES qui doit etre
+      // Au retour de l'ecran des profils, c'est la lame ARCHER qui doit etre
       // surlignee. FortRise ne connait pas notre etat et retombe sinon sur FIGHT.
       MainMenu.MenuState profilesState = ModRegisters.MenuState<UIProfilesMenu>();
       if (profilesState != MainMenu.MenuState.PressStart && menu.OldState == profilesState)

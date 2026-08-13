@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Clavier virtuel de saisie d'un nom, repris du mod CustomName et adapte au menu

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using FortRise;
 using HarmonyLib;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Son de victoire de match, joue sur le coup final.

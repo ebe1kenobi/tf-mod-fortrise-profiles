@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Apercu de l'archer en cours de forge : le corps assemble, anime.
@@ -22,7 +22,6 @@ namespace TFModFortRiseProfiles
   {
     private const float BoxWidth = 76f;
     private const float BoxHeight = 76f;
-    private const int Scale = 2;
 
     /// <summary>Images de la course, dans l'ordre ou l'animation les enchaine.</summary>
     private static readonly int[] RunFrames = { 2, 1, 2, 3 };
@@ -32,6 +31,16 @@ namespace TFModFortRiseProfiles
     private ForgeDesign shown;
     private int shownRevision = -1;
     private Texture2D body;
+
+    /// <summary>
+    /// Le cadre du dessin montre : la taille d'une de ses images, et l'ancre dedans.
+    ///
+    /// Mesuré et non suppose. Depuis que la forge accepte des images de n'importe
+    /// quelle taille, decouper cet apercu tous les 24 pixels ne montrerait le
+    /// personnage que sur les dessins qui font justement 24.
+    /// </summary>
+    private ForgeFrame frame;
+
     private int frameCount;
     private int missing;
     private string failure;
@@ -41,6 +50,14 @@ namespace TFModFortRiseProfiles
     public UIForgePreview(Vector2 position) : base(position)
     {
     }
+
+    /// <summary>
+    /// La gachette gauche agrandit ici aussi.
+    ///
+    /// C'est le premier apercu qu'on voit, et longtemps le seul qu'on regarde : s'il
+    /// etait le seul a ne pas obeir, on croirait le reglage sans effet.
+    /// </summary>
+    protected override bool AllowZoomToggle => true;
 
     public void Show(ForgeDesign design)
     {
@@ -63,17 +80,18 @@ namespace TFModFortRiseProfiles
 
       if (design.PickOf("stand") == null)
       {
-        failure = "PAS DE POSE DEBOUT";
+        failure = "NO STAND POSE";
         return;
       }
 
       // Le corps seul : c'est tout ce qui s'affiche ici, et cette methode est
       // rappelee a chaque ligne survolee.
+      frame = ForgeCompose.FrameOf(design);
       ForgeImage strip = ForgeBuild.BuildBody(design);
 
       if (strip == null)
       {
-        failure = "ASSEMBLAGE IMPOSSIBLE";
+        failure = "BUILD FAILED";
         return;
       }
 
@@ -81,14 +99,14 @@ namespace TFModFortRiseProfiles
       {
         body = new Texture2D(Engine.Instance.GraphicsDevice, strip.Width, strip.Height);
         body.SetData(strip.Pixels);
-        frameCount = strip.Width / ForgeSlots.Frame;
+        frameCount = frame.Width > 0 ? strip.Width / frame.Width : 0;
         missing = design.Missing().Count;
         failure = null;
       }
       catch (Exception e)
       {
         Log.Error($"[Forge] apercu impossible : {e.Message}");
-        failure = "APERCU IMPOSSIBLE";
+        failure = "PREVIEW FAILED";
       }
     }
 
@@ -136,11 +154,24 @@ namespace TFModFortRiseProfiles
         index = 0;
       }
 
-      var source = new Rectangle(index * ForgeSlots.Frame, 0, ForgeSlots.Frame, ForgeSlots.Frame);
-      var origin = new Vector2(ForgeSlots.Frame / 2f, ForgeSlots.Frame / 2f);
+      var source = new Rectangle(index * frame.Width, 0, frame.Width, frame.Height);
 
-      Draw.SpriteBatch.Draw(body, Position, source, Color.White, 0f, origin,
-          Scale, SpriteEffects.None, 0f);
+      // Taille reelle par defaut, comme partout ailleurs dans la forge : c'est ce
+      // qui permet de juger un archer sans lancer de partie. La gachette gauche
+      // agrandit pour examiner un detail.
+      float zoom = ZoomFor(frame.Width, frame.Height, Math.Min(BoxWidth, BoxHeight));
+
+      // Coin et non centre : le cadre de comparaison se place a partir de la, et le
+      // dessiner autour d'un point centre demanderait de refaire le meme calcul a
+      // l'envers.
+      var poseCorner = new Vector2(
+          Position.X - frame.Width * zoom * 0.5f,
+          Position.Y - frame.Height * zoom * 0.5f);
+
+      Draw.SpriteBatch.Draw(body, poseCorner, source, Color.White, 0f, Vector2.Zero,
+          zoom, SpriteEffects.None, 0f);
+
+      DrawVanillaFrame(poseCorner, frame.OriginX, frame.OriginY, zoom);
 
       if (missing > 0)
       {

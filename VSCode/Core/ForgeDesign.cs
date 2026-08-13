@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Une image du vivier : la planche dont elle vient, et sa case.</summary>
   public class ForgePick
@@ -10,8 +10,13 @@ namespace TFModFortRiseProfiles
     /// <summary>Nom du repertoire du vivier, donc de la planche source.</summary>
     public string Source { get; set; } = "";
 
-    public int Col { get; set; }
-    public int Row { get; set; }
+    /// <summary>
+    /// Nom du fichier de l'image, sans extension.
+    ///
+    /// Remplace l'ancien couple ligne/colonne, qui n'etait qu'un detour pour
+    /// reconstruire ce meme nom et obligeait chaque planche a declarer sa grille.
+    /// </summary>
+    public string File { get; set; } = "";
 
     /// <summary>
     /// De combien ce calque se deplace, en pixels, dans la pose assemblee.
@@ -30,12 +35,78 @@ namespace TFModFortRiseProfiles
 
     public int OffsetY { get; set; }
 
+    /// <summary>
+    /// Taille de l'image, en POURCENTAGE de son fichier.
+    ///
+    /// Absolu et non relatif : redemander 40% deux fois donne la meme image, alors
+    /// qu'un reglage relatif reduirait a chaque passage sans qu'on sache plus ou l'on
+    /// en est. C'est aussi ce qui permet a l'ecran d'en poser un sur toutes les
+    /// images d'un coup sans que celles deja reglees derivent.
+    ///
+    /// La forge sait desormais quel format un archer du jeu occupe - le cadre orange
+    /// des apercus - mais elle ne redimensionne rien d'elle-meme : une image reprise
+    /// ailleurs est celle que son auteur a choisie, et c'est a lui de dire de combien
+    /// elle doit maigrir.
+    /// </summary>
+    public int Scale { get; set; } = 100;
+
+    /// <summary>
+    /// Pixels retires de chaque bord de l'image, comptes sur le FICHIER et donc
+    /// avant la mise a l'echelle.
+    ///
+    /// Ce qui reste ne bouge pas : le rognage compense le decalage qu'il provoque.
+    /// Rogner trois pixels a gauche retire une bordure sans emmener le personnage
+    /// avec elle - sinon chaque rognage demanderait un recalage.
+    /// </summary>
+    public int CropLeft { get; set; }
+
+    public int CropRight { get; set; }
+    public int CropTop { get; set; }
+    public int CropBottom { get; set; }
+
+    /// <summary>
+    /// Miroir gauche-droite de l'image, dans son propre cadre.
+    ///
+    /// Le premier usage n'est pas l'effet mais la reprise : les archers du jeu sont
+    /// dessines tournes vers la DROITE, arc devant eux, et c'est le jeu qui retourne
+    /// l'image pour l'autre sens. Une planche prise ailleurs et dessinee vers la
+    /// gauche donne donc un archer qui court a reculons, et le seul remede etait de
+    /// la retourner dans un editeur avant de la decouper.
+    ///
+    /// Retourne DANS SON CADRE, sans deplacer le cadre : c'est ce que fait tout
+    /// editeur d'image, et cela reste previsible sur une pile de calques. Un
+    /// personnage dessine de travers dans sa case se recale ensuite par CALQUE X.
+    /// </summary>
+    public bool FlipX { get; set; }
+
+    /// <summary>Miroir haut-bas, meme regle.</summary>
+    public bool FlipY { get; set; }
+
+    /// <summary>
+    /// Rotation de l'image, en degres, dans le sens des aiguilles d'une montre.
+    ///
+    /// Autour du centre de l'image, le centre restant en place : le cadre s'agrandit
+    /// de ce qu'il faut pour que rien ne sorte, et le decalage suit tout seul.
+    ///
+    /// Les quarts de tour sont exacts - une simple transposition. Les autres angles
+    /// passent par le plus proche voisin et abiment forcement un dessin au pixel :
+    /// c'est visible, c'est assume, et cela reste utile pour incliner un bras ou
+    /// coucher un cadavre.
+    /// </summary>
+    public int Rotation { get; set; }
+
+    /// <summary>Vrai si l'image est posee telle qu'elle est dans le vivier.</summary>
     [JsonIgnore]
-    public ForgeCell Cell => new ForgeCell(Col, Row);
+    public bool Untouched =>
+        Scale == 100 && CropLeft == 0 && CropRight == 0 && CropTop == 0 && CropBottom == 0
+        && !FlipX && !FlipY && Rotation == 0;
+
+    [JsonIgnore]
+    public ForgeCell Cell => new ForgeCell(File);
 
     public static ForgePick Of(string source, ForgeCell cell)
     {
-      return new ForgePick { Source = source, Col = cell.Col, Row = cell.Row };
+      return new ForgePick { Source = source, File = cell.File };
     }
 
     public override string ToString()
@@ -186,6 +257,36 @@ namespace TFModFortRiseProfiles
     public string AltOf { get; set; } = "";
 
     /// <summary>
+    /// De combien la tete descend sur chaque pose du corps, par cle d'emplacement.
+    ///
+    /// Le jeu accroche la tete a une hauteur qui depend de la pose : chez l'archer
+    /// vert 19 debout, 20 sur la premiere image de course, 15 accroupi. C'est ce qui
+    /// fait qu'une tete suit le corps au lieu de flotter au-dessus.
+    ///
+    /// Nos images de tete sont cadrees comme le corps et calees sur la pose debout :
+    /// une seule image sert les dix poses. Ce sont donc ces ecarts, et eux seuls, qui
+    /// rendent la difference - sans eux un personnage accroupi garde la tete quatre
+    /// pixels trop haut.
+    ///
+    /// Rempli a l'import depuis les tableaux de l'archer repris. Vide, tout vaut
+    /// zero : une tete choisie a la main dans le vivier ne bouge pas d'une pose a
+    /// l'autre, ce qui est le comportement qu'avait la forge avant.
+    /// </summary>
+    public Dictionary<string, int> HeadOffsets { get; set; } = new Dictionary<string, int>();
+
+    /// <summary>
+    /// Faut-il dessiner la tete pendant la glissade d'esquive ? Null pour laisser la
+    /// forge decider.
+    ///
+    /// Les archers du jeu repondent non : leurs images de glissade portent deja la
+    /// tete, et en poser une seconde par-dessus en ferait deux. Un archer forge
+    /// repond oui, parce que sa tete est justement ce qui n'est pas dans son corps.
+    /// Un archer importe garde la reponse de son mod - la deviner reviendrait a
+    /// parier sur la facon dont ses images ont ete dessinees.
+    /// </summary>
+    public bool? SlideHead { get; set; }
+
+    /// <summary>
     /// Voix de repli : l'archer du jeu dont les sons comblent ce qui n'est pas
     /// fourni. Zero est le vert - c'est la valeur que tous les archers forges
     /// avaient sans l'avoir choisie.
@@ -267,6 +368,74 @@ namespace TFModFortRiseProfiles
       return Layers.TryGetValue(slotKey, out List<ForgePick> stack) && stack != null
           ? stack
           : new List<ForgePick>();
+    }
+
+    /// <summary>
+    /// Vrai si le sprite de tete montrera quelque chose.
+    ///
+    /// Pas seulement "une tete a ete choisie" : un chapeau ou une couronne seuls
+    /// suffisent, et c'est meme le cas interessant - un personnage qui porte sa tete
+    /// dans son corps ne peut pas perdre un chapeau dessine avec, alors qu'un chapeau
+    /// sorti en sprite de tete s'envole.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasHeadArt
+    {
+      get
+      {
+        foreach (ForgeSlot slot in ForgeSlots.All)
+        {
+          bool head = slot.Sheet == ForgeSheet.Head
+                      || slot.Sheet == ForgeSheet.HeadNormal
+                      || slot.Sheet == ForgeSheet.HeadCrown
+                      || slot.Sheet == ForgeSheet.Crown
+                      || slot.Key == "hat_normal";
+
+          if (head && PickOf(slot.Key) != null)
+          {
+            return true;
+          }
+        }
+
+        return false;
+      }
+    }
+
+    /// <summary>De combien la tete descend sur cette pose. Zero par defaut.</summary>
+    public int HeadOffsetOf(string slotKey)
+    {
+      HeadOffsets ??= new Dictionary<string, int>();
+
+      return slotKey != null && HeadOffsets.TryGetValue(slotKey, out int offset) ? offset : 0;
+    }
+
+    /// <summary>
+    /// Fait descendre la tete de quelques pixels sur une pose du corps.
+    ///
+    /// Un ecart revenu a zero est retire plutot que laisse : le dictionnaire ne garde
+    /// que ce qui a ete regle, et un dessin qui n'y a pas touche n'en porte aucune
+    /// trace.
+    /// </summary>
+    public void MoveHead(string slotKey, int delta)
+    {
+      if (string.IsNullOrEmpty(slotKey))
+      {
+        return;
+      }
+
+      HeadOffsets ??= new Dictionary<string, int>();
+      int value = HeadOffsetOf(slotKey) + delta;
+
+      if (value == 0)
+      {
+        HeadOffsets.Remove(slotKey);
+      }
+      else
+      {
+        HeadOffsets[slotKey] = value;
+      }
+
+      Touch();
     }
 
     /// <summary>Le recalage d'une planche. Jamais null : une planche jamais reglee vaut zero.</summary>

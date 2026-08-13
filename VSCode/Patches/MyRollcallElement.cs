@@ -7,7 +7,7 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Choix du profil sur l'ecran de selection des archers.

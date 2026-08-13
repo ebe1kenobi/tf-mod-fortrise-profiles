@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les calques d'une pose : leur ordre, leur cadrage, et ce qu'on en retire.
@@ -62,12 +62,12 @@ namespace TFModFortRiseProfiles
 
       if (design == null || slot == null)
       {
-        Main.State = framesState;
+        MenuNav.Switch(Main, framesState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeLayers>());
-      Main.BackState = framesState;
+      Main.BackState = MenuNav.Arrive(Main, framesState);
       Main.TweenBGCameraToY(2);
 
       Bound();
@@ -80,7 +80,7 @@ namespace TFModFortRiseProfiles
 
       var rows = new List<UIMenuRow>();
 
-      UIMenuRow layerRow = MakeRow(rows.Count, "CALQUE");
+      UIMenuRow layerRow = MakeRow(rows.Count, "LAYER");
       layerRow.RightText = LayerLabel;
       layerRow.OnLeft = () => Cycle(-1);
       layerRow.OnRight = () => Cycle(1);
@@ -91,13 +91,13 @@ namespace TFModFortRiseProfiles
       // pourquoi ils se nomment d'apres CE QU'ILS DEPLACENT et non d'apres l'effet -
       // "DECALAGE X" deux fois ne disait rien - et pourquoi les lignes de planche
       // annoncent le nombre d'images qu'elles emmenent avec elles.
-      UIMenuRow offsetXRow = MakeRow(rows.Count, "CALQUE X");
+      UIMenuRow offsetXRow = MakeRow(rows.Count, "LAYER X");
       offsetXRow.RightText = () => Signed(Layer()?.OffsetX ?? 0);
       offsetXRow.OnLeft = () => MoveLayer(-1, 0);
       offsetXRow.OnRight = () => MoveLayer(1, 0);
       rows.Add(offsetXRow);
 
-      UIMenuRow offsetYRow = MakeRow(rows.Count, "CALQUE Y");
+      UIMenuRow offsetYRow = MakeRow(rows.Count, "LAYER Y");
       offsetYRow.RightText = () => Signed(Layer()?.OffsetY ?? 0);
       offsetYRow.OnLeft = () => MoveLayer(0, -1);
       offsetYRow.OnRight = () => MoveLayer(0, 1);
@@ -106,17 +106,41 @@ namespace TFModFortRiseProfiles
       // Deplace toutes les images qui viennent de cette planche, y compris celles des
       // autres poses de l'archer. C'est le reglage qui evite de reprendre dix-neuf
       // emplacements un par un quand une planche entiere est calee ailleurs.
-      UIMenuRow sheetXRow = MakeRow(rows.Count, "PLANCHE X");
+      UIMenuRow sheetXRow = MakeRow(rows.Count, "SHEET X");
       sheetXRow.RightText = () => Reach(Sheet().X);
       sheetXRow.OnLeft = () => MoveSheet(-1, 0);
       sheetXRow.OnRight = () => MoveSheet(1, 0);
       rows.Add(sheetXRow);
 
-      UIMenuRow sheetYRow = MakeRow(rows.Count, "PLANCHE Y");
+      UIMenuRow sheetYRow = MakeRow(rows.Count, "SHEET Y");
       sheetYRow.RightText = () => Reach(Sheet().Y);
       sheetYRow.OnLeft = () => MoveSheet(0, -1);
       sheetYRow.OnRight = () => MoveSheet(0, 1);
       rows.Add(sheetYRow);
+
+      // La taille et le rognage de CETTE image. Le meme ecran que celui de la fiche,
+      // qui les pose sur toutes a la fois : une planche se regle d'abord en bloc, et
+      // l'on ne descend ici que pour l'image qui ne suit pas.
+      UIMenuRow adjustRow = MakeRow(rows.Count, "SIZE / CROP");
+      adjustRow.RightText = AdjustLabel;
+      adjustRow.OnConfirmed = OpenAdjust;
+      rows.Add(adjustRow);
+
+      // La hauteur de la tete sur CETTE pose. Seulement sur les poses du corps : le
+      // jeu accroche la tete a une hauteur par image du corps, et nulle part ailleurs.
+      //
+      // C'est ce qui donne une tete vivante - chez l'archer vert elle descend de
+      // quatre pixels quand il s'accroupit et monte d'un en courant. L'import releve
+      // ces valeurs sur l'archer repris ; cette ligne est le seul moyen de les donner
+      // a un archer dessine ici.
+      if (slot.Sheet == ForgeSheet.Body)
+      {
+        UIMenuRow headRow = MakeRow(rows.Count, "HEAD Y");
+        headRow.RightText = () => Signed(design.HeadOffsetOf(slot.Key));
+        headRow.OnLeft = () => MoveHead(-1);
+        headRow.OnRight = () => MoveHead(1);
+        rows.Add(headRow);
+      }
 
       UIMenuRow orderRow = MakeRow(rows.Count, "ORDRE");
       orderRow.RightText = OrderLabel;
@@ -124,13 +148,13 @@ namespace TFModFortRiseProfiles
       orderRow.OnRight = () => Reorder(1);
       rows.Add(orderRow);
 
-      // "CHOISIR" et non "AJOUTER" : le selecteur fait les deux - valider remplace la
+      // "PICK" et non "ADD" : le selecteur fait les deux - valider remplace la
       // pose, Alt empile - et promettre l'ajout ferait de la validation une perte.
-      UIMenuRow addRow = MakeRow(rows.Count, "CHOISIR UNE IMAGE");
+      UIMenuRow addRow = MakeRow(rows.Count, "PICK A FRAME");
       addRow.OnConfirmed = OpenPicker;
       rows.Add(addRow);
 
-      UIMenuRow dropRow = MakeRow(rows.Count, "SUPPRIMER CE CALQUE");
+      UIMenuRow dropRow = MakeRow(rows.Count, "REMOVE THIS LAYER");
       dropRow.OnConfirmed = Drop;
       rows.Add(dropRow);
 
@@ -155,7 +179,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()
@@ -192,6 +219,69 @@ namespace TFModFortRiseProfiles
     {
       ForgePick pick = Layer();
       return pick == null ? new ForgeNudge() : design.NudgeOf(pick.Source);
+    }
+
+    /// <summary>
+    /// Descend ou remonte la tete sur cette pose.
+    ///
+    /// Vers le BAS quand on va vers la droite, comme partout ailleurs dans la forge :
+    /// c'est le personnage qu'on deplace, pas l'ancre. La valeur enregistree, elle,
+    /// est bien un ecart d'ancre - le sens s'inverse a l'enregistrement, une fois,
+    /// dans ForgeSlots.HeadYOrigins.
+    /// </summary>
+    private void MoveHead(int delta)
+    {
+      design.MoveHead(slot.Key, delta);
+      preview?.Show(design, slot.Key);
+    }
+
+    private void OpenAdjust()
+    {
+      if (Layer() == null)
+      {
+        Sounds.ui_invalid.Play(160f, 1f);
+        return;
+      }
+
+      UIForgeAdjust.EditingSlot = slot.Key;
+      UIForgeAdjust.EditingLayer = current;
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeAdjust>());
+    }
+
+    /// <summary>
+    /// L'etat des retouches de ce calque, en tres peu de place.
+    ///
+    /// La taille toujours, le reste par un signe : la ligne fait cent cinquante
+    /// pixels et "ROGNE MIROIR 90 DEGRES" n'y tiendrait pas. Ce qu'on veut savoir
+    /// d'ici, c'est qu'il y a quelque chose - le detail est a un bouton.
+    /// </summary>
+    private string AdjustLabel()
+    {
+      ForgePick pick = Layer();
+
+      if (pick == null)
+      {
+        return "";
+      }
+
+      string marks = "";
+
+      if (pick.CropLeft + pick.CropRight + pick.CropTop + pick.CropBottom > 0)
+      {
+        marks += " ROGNE";
+      }
+
+      if (pick.FlipX || pick.FlipY)
+      {
+        marks += pick.FlipX && pick.FlipY ? " HV" : pick.FlipX ? " H" : " V";
+      }
+
+      if (pick.Rotation != 0)
+      {
+        marks += " " + pick.Rotation + "'";
+      }
+
+      return pick.Scale + "%" + marks;
     }
 
     /// <summary>
@@ -233,7 +323,7 @@ namespace TFModFortRiseProfiles
 
       if (stack.Count == 0)
       {
-        return "VIDE";
+        return "EMPTY";
       }
 
       ForgePick pick = stack[current];
@@ -262,10 +352,10 @@ namespace TFModFortRiseProfiles
 
       if (current == 0)
       {
-        return "AU FOND";
+        return "TO BACK";
       }
 
-      return current == stack.Count - 1 ? "DEVANT" : "AU MILIEU";
+      return current == stack.Count - 1 ? "DEVANT" : "TO MIDDLE";
     }
 
     private static string Signed(int value)
@@ -394,14 +484,13 @@ namespace TFModFortRiseProfiles
     private void OpenPicker()
     {
       UIForgeFrames.EditingSlot = slot.Key;
-      UIForgeFramePicker.ReturnToLayers = true;
 
       // Retenu pour savoir, au retour, si un calque a ete ajoute : c'est celui-la
       // qu'on voudra regler, et le chercher a la main apres l'avoir pose serait un
       // pas de trop dans un geste qu'on repete.
       countBeforePicker = Stack().Count;
 
-      Main.State = ModRegisters.MenuState<UIForgeFramePicker>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeFramePicker>());
     }
 
     private void Drop()
@@ -488,7 +577,7 @@ namespace TFModFortRiseProfiles
 
       if (ForgeCompose.Count(design, slotKey) == 0)
       {
-        caption = "VIDE";
+        caption = "EMPTY";
         return;
       }
 
@@ -496,7 +585,7 @@ namespace TFModFortRiseProfiles
 
       if (pose == null)
       {
-        caption = "PLANCHE ABSENTE";
+        caption = "SHEET MISSING";
         return;
       }
 
@@ -518,7 +607,7 @@ namespace TFModFortRiseProfiles
       catch (Exception e)
       {
         Log.Error($"[Forge] apercu des calques impossible : {e.Message}");
-        caption = "APERCU IMPOSSIBLE";
+        caption = "PREVIEW FAILED";
       }
     }
 
@@ -574,13 +663,9 @@ namespace TFModFortRiseProfiles
 
       if (all != null && !all.IsDisposed)
       {
-        // Le cadre de ce que la forge gardera. Dessine par-dessus les deux couches :
-        // c'est par rapport a lui qu'on aligne, il ne doit jamais passer dessous.
-        Draw.HollowRect(new Rectangle(
-            (int)(corner.X + windowX * zoom),
-            (int)(corner.Y + windowY * zoom),
-            (int)(ForgeSlots.Frame * zoom),
-            (int)(ForgeSlots.Frame * zoom)), Color.Orange * 0.8f);
+        // La place d'un archer du jeu. Dessinee par-dessus les deux couches : c'est
+        // par rapport a elle qu'on aligne, elle ne doit jamais passer dessous.
+        DrawVanillaFrame(corner, windowX + ForgeSlots.AnchorX, windowY + ForgeSlots.AnchorY, zoom);
       }
 
       float line = corner.Y + boxHeight + 8f;

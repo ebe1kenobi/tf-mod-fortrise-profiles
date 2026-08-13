@@ -7,7 +7,7 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Remplace les portraits de l'archer par les images du profil : sur l'ecran de

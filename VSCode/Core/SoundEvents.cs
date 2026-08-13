@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les evenements auxquels un profil peut attacher des sons.
@@ -21,6 +21,20 @@ namespace TFModFortRiseProfiles
     public const string DieLaser = "DIE_LASER";
     public const string DieStomp = "DIE_STOMP";
     public const string FireArrow = "FIRE_ARROW";
+
+    // Les sons de tous les jours. Ils ne passent pas par une action encadree comme
+    // les morts et le tir : ils sont reconnus a l'instance SFX que le jeu joue (voir
+    // MyProfileSfx.FromArcherSound).
+    public const string Jump = "JUMP";
+    public const string Land = "LAND";
+    public const string Duck = "DUCK";
+    public const string Aim = "AIM";
+    public const string AimCancel = "AIM_CANCEL";
+    public const string Grab = "GRAB";
+    public const string ArrowGrab = "ARROW_GRAB";
+    public const string ArrowRecover = "ARROW_RECOVER";
+    public const string NoFire = "NOFIRE";
+
     public const string Win = "WIN";
 
     public const string KilledByPrefix = "KILLED_BY_";
@@ -28,7 +42,10 @@ namespace TFModFortRiseProfiles
     /// <summary>Evenements communs a tous les profils, dans l'ordre d'affichage.</summary>
     public static readonly string[] Fixed =
     {
-      Die, DieBomb, DieEnv, DieLaser, DieStomp, FireArrow, Win
+      Die, DieBomb, DieEnv, DieLaser, DieStomp,
+      FireArrow, Jump, Land, Duck, Aim, AimCancel,
+      Grab, ArrowGrab, ArrowRecover, NoFire,
+      Win
     };
 
     public static string KilledBy(string killerProfileName)

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Une pose assemblee, avec la fenetre de decoupe reperee dedans.
@@ -23,6 +23,30 @@ namespace TFModFortRiseProfiles
 
     /// <summary>Calques reellement poses : une planche absente en retire un.</summary>
     public int Drawn;
+  }
+
+  /// <summary>
+  /// Le cadre d'un archer : la taille d'une image de sa planche, et ou tombe son
+  /// point d'ancrage dedans.
+  ///
+  /// Calcule sur SES poses, et non fixe d'avance. La fenetre orange ne decoupe plus
+  /// rien : elle ne sert qu'a reperer l'ancre. Un dessin fait de grandes images
+  /// donne donc un grand cadre, et rien n'est rogne.
+  /// </summary>
+  public readonly struct ForgeFrame
+  {
+    public readonly int Width;
+    public readonly int Height;
+    public readonly int OriginX;
+    public readonly int OriginY;
+
+    public ForgeFrame(int width, int height, int originX, int originY)
+    {
+      Width = width;
+      Height = height;
+      OriginX = originX;
+      OriginY = originY;
+    }
   }
 
   /// <summary>
@@ -107,82 +131,110 @@ namespace TFModFortRiseProfiles
       return pose;
     }
 
+    public static int Count(ForgeDesign design, string slotKey)
+    {
+      return design == null ? 0 : design.LayersOf(slotKey).Count;
+    }
+
     /// <summary>
-    /// Les pixels que la forge gardera : le canevas decoupe a la fenetre.
+    /// Le cadre qu'il faut pour contenir TOUTES les poses d'un dessin sans rien
+    /// rogner, ancres alignees.
     ///
-    /// Toujours <see cref="ForgeSlots.Frame"/> au carre, quelle que soit la taille des
-    /// cases sources. C'est cette taille que les sprites du jeu attendent.
+    /// On mesure, pour chaque pose, de combien elle deborde de son ancre dans les
+    /// quatre directions, et on retient le pire de chaque cote. Le cadre en decoule,
+    /// et l'ancre s'y place a la distance maximale trouvee - c'est ce qui garantit
+    /// que la pose la plus large ne sort pas, et que toutes restent alignees entre
+    /// elles.
+    ///
+    /// Plancher a la fenetre : un dessin vide ou minuscule garde le format
+    /// historique plutot qu'un cadre de quelques pixels.
     /// </summary>
-    public static Color[] Cut(ForgePose pose)
+    public static ForgeFrame FrameOf(ForgeDesign design)
+    {
+      int left = ForgeSlots.AnchorX;
+      int right = ForgeSlots.Frame - ForgeSlots.AnchorX;
+      int top = ForgeSlots.AnchorY;
+      int bottom = ForgeSlots.Frame - ForgeSlots.AnchorY;
+
+      foreach (ForgeSlot slot in ForgeSlots.All)
+      {
+        ForgePose pose = Pose(design, slot.Key);
+
+        if (pose == null)
+        {
+          continue;
+        }
+
+        int anchorX = pose.WindowX + ForgeSlots.AnchorX;
+        int anchorY = pose.WindowY + ForgeSlots.AnchorY;
+
+        left = Math.Max(left, anchorX);
+        top = Math.Max(top, anchorY);
+        right = Math.Max(right, pose.Width - anchorX);
+        bottom = Math.Max(bottom, pose.Height - anchorY);
+      }
+
+      return new ForgeFrame(left + right, top + bottom, left, top);
+    }
+
+    /// <summary>
+    /// Les pixels que la forge gardera : la pose entiere, posee dans le cadre par
+    /// son ancre.
+    ///
+    /// Plus aucun rognage. Ce qui depasse la fenetre orange est conserve - c'est le
+    /// cadre qui s'est adapte, pas le dessin qui a ete coupe.
+    /// </summary>
+    public static Color[] Cut(ForgePose pose, ForgeFrame frame)
     {
       if (pose == null)
       {
         return null;
       }
 
-      int size = ForgeSlots.Frame;
-      var window = new Color[size * size];
+      var image = new Color[frame.Width * frame.Height];
 
-      for (int y = 0; y < size; y++)
+      // Decalage a appliquer pour que l'ancre de la pose tombe sur celle du cadre.
+      int shiftX = frame.OriginX - (pose.WindowX + ForgeSlots.AnchorX);
+      int shiftY = frame.OriginY - (pose.WindowY + ForgeSlots.AnchorY);
+
+      for (int y = 0; y < pose.Height; y++)
       {
-        int sourceY = pose.WindowY + y;
+        int targetY = y + shiftY;
 
-        if (sourceY < 0 || sourceY >= pose.Height)
+        if (targetY < 0 || targetY >= frame.Height)
         {
           continue;
         }
 
-        for (int x = 0; x < size; x++)
+        for (int x = 0; x < pose.Width; x++)
         {
-          int sourceX = pose.WindowX + x;
+          int targetX = x + shiftX;
 
-          if (sourceX < 0 || sourceX >= pose.Width)
+          if (targetX < 0 || targetX >= frame.Width)
           {
             continue;
           }
 
-          Color pixel = pose.Pixels[sourceY * pose.Width + sourceX];
+          Color pixel = pose.Pixels[y * pose.Width + x];
 
           // Un pixel entierement transparent est laisse a zero plutot que recopie
-          // avec sa couleur. C'est invisible en alpha ordinaire, mais les planches
-          // exportees deviennent comparables octet a octet a celles du prototype - et
-          // une comparaison qui echoue pour une raison invisible est une comparaison
-          // qu'on finit par ne plus faire.
+          // avec sa couleur : invisible en alpha ordinaire, mais les planches
+          // exportees deviennent comparables octet a octet.
           if (pixel.A != 0)
           {
-            window[y * size + x] = pixel;
+            image[targetY * frame.Width + targetX] = pixel;
           }
         }
       }
 
-      return window;
-    }
-
-    /// <summary>Nombre de calques enregistres, lisibles ou non.</summary>
-    public static int Count(ForgeDesign design, string slotKey)
-    {
-      return design == null ? 0 : design.LayersOf(slotKey).Count;
-    }
-
-    // ------------------------------------------------------------------
-
-    private class Layer
-    {
-      public ForgePick Pick;
-      public Color[] Pixels;
-      public int Width;
-      public int Height;
-      public int X;
-      public int Y;
+      return image;
     }
 
     /// <summary>
-    /// Lit les calques lisibles d'une pose, dans l'ordre du choix.
+    /// Lit les calques d'une pose, chacun a la taille REELLE de son image.
     ///
-    /// Un calque introuvable est saute et non fatal : perdre les bras vaut mieux que
-    /// perdre la pose, et le journal dit lequel manque. Chaque calque garde donc une
-    /// reference vers le choix dont il vient, seul lien fiable avec l'empilement
-    /// enregistre une fois que des rangs ont saute.
+    /// Un calque introuvable est saute et non fatal : perdre les bras vaut mieux
+    /// que perdre la pose, et le journal dit lequel manque.
     /// </summary>
     private static List<Layer> Read(ForgeDesign design, string slotKey)
     {
@@ -203,7 +255,7 @@ namespace TFModFortRiseProfiles
           continue;
         }
 
-        Color[] pixels = ForgeBank.ReadCell(source, pick.Cell);
+        Color[] pixels = ForgeBank.ReadCell(source, pick.Cell, out var size);
 
         if (pixels == null)
         {
@@ -211,19 +263,81 @@ namespace TFModFortRiseProfiles
         }
 
         ForgeNudge placement = design.PlacementOf(pick);
+        float x = placement.X;
+        float y = placement.Y;
+
+        if (!pick.Untouched)
+        {
+          // Le rognage d'abord, la taille ensuite : les valeurs de rognage se
+          // comptent sur le fichier, ce qui les rend independantes du facteur - on
+          // peut changer l'un sans que l'autre se decale.
+          pixels = ForgePixels.Crop(
+              pixels, ref size, pick.CropLeft, pick.CropRight, pick.CropTop, pick.CropBottom);
+
+          // Ce qui reste ne bouge pas : sans ce report, retirer une bordure a gauche
+          // emmenerait le personnage avec elle.
+          x += pick.CropLeft;
+          y += pick.CropTop;
+
+          // Le miroir ne deplace rien : l'image se retourne dans son cadre, la ou
+          // elle est.
+          pixels = ForgePixels.Flip(pixels, size, pick.FlipX, pick.FlipY);
+
+          if (pick.Rotation != 0)
+          {
+            Point before = size;
+            pixels = ForgePixels.Rotate(pixels, ref size, pick.Rotation);
+
+            // La rotation agrandit le cadre autour du centre. On rend au calque la
+            // moitie de ce qu'il a gagne de chaque cote, sans quoi l'image tournee
+            // partirait vers le bas a droite.
+            x -= (size.X - before.X) / 2f;
+            y -= (size.Y - before.Y) / 2f;
+          }
+
+          if (pick.Scale != 100)
+          {
+            float k = pick.Scale / 100f;
+            pixels = ForgePixels.Scale(pixels, ref size, pick.Scale);
+
+            // On reduit AUTOUR DE L'ANCRE et non du coin de l'image : l'ancre est le
+            // point que le jeu pose sur la position du personnage, les pieds au sol.
+            // Reduire depuis le coin ferait flotter en l'air tout ce qu'on rapetisse,
+            // et il faudrait recaler apres chaque changement de taille.
+            float anchorX = design.WindowX + ForgeSlots.AnchorX;
+            float anchorY = design.WindowY + ForgeSlots.AnchorY;
+
+            x = anchorX - (anchorX - x) * k;
+            y = anchorY - (anchorY - y) * k;
+          }
+        }
 
         layers.Add(new Layer
         {
           Pick = pick,
           Pixels = pixels,
-          Width = source.CellWidth,
-          Height = source.CellHeight,
-          X = placement.X,
-          Y = placement.Y
+          Width = size.X,
+          Height = size.Y,
+
+          // Arrondi explicite : Math.Round arrondit au pair, et un demi-pixel qui
+          // tombe tantot d'un cote tantot de l'autre fait boiter la course.
+          X = (int)Math.Floor(x + 0.5f),
+          Y = (int)Math.Floor(y + 0.5f)
         });
       }
 
       return layers;
+    }
+
+    /// <summary>Un calque pose sur le canevas : ses pixels, sa taille, sa place.</summary>
+    private class Layer
+    {
+      public ForgePick Pick;
+      public Color[] Pixels;
+      public int Width;
+      public int Height;
+      public int X;
+      public int Y;
     }
 
     /// <summary>

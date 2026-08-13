@@ -5,7 +5,7 @@ using FortRise;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Un PNG du vivier, quelle que soit sa provenance.</summary>
   public sealed class ImageFile
@@ -66,7 +66,7 @@ namespace TFModFortRiseProfiles
 
     private static List<ImageFile> pool;
 
-    private static string StorageRoot => TFModFortRiseProfilesModule.Instance.Context.Storage.StoragePath;
+    private static string StorageRoot => TFModFortRiseArcherModule.Instance.Context.Storage.StoragePath;
 
     public static string PoolDir => Path.Combine(StorageRoot, PoolDirName);
 
@@ -130,7 +130,7 @@ namespace TFModFortRiseProfiles
 
       try
       {
-        IModContent content = TFModFortRiseProfilesModule.Instance.ModContent;
+        IModContent content = TFModFortRiseArcherModule.Instance.ModContent;
         if (content != null && content.TryGetResource(ModPoolPath, out IResourceInfo root) && root?.Childrens != null)
         {
           foreach (IResourceInfo child in root.Childrens)

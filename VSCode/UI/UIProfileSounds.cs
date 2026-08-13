@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Liste des evenements sonores d'un profil, avec le nombre de sons attaches a
@@ -36,12 +36,12 @@ namespace TFModFortRiseProfiles
       profile = UIProfilesMenu.Editing;
       if (profile == null)
       {
-        Main.State = ModRegisters.MenuState<UIProfilesMenu>();
+        MenuNav.Switch(Main, ModRegisters.MenuState<UIProfilesMenu>());
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileSounds>());
-      Main.BackState = editState;
+      Main.BackState = MenuNav.Arrive(Main, editState);
       Main.TweenBGCameraToY(2);
 
       // Le vivier est relu ici : le joueur a pu deposer des WAV pendant que le jeu
@@ -82,7 +82,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
 
       Main.Add(new UIPoolHint(new Vector2(160f, 224f)));
     }
@@ -110,7 +113,7 @@ namespace TFModFortRiseProfiles
         OnConfirmed = () =>
         {
           EditingEvent = captured;
-          Main.State = ModRegisters.MenuState<UIProfileSoundPicker>();
+          MenuNav.Push(Main, ModRegisters.MenuState<UIProfileSoundPicker>());
         }
       };
 

@@ -1,7 +1,7 @@
 using System;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Rallonge les compteurs indexes par archer.

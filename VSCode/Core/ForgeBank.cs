@@ -1,47 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
-  /// <summary>Une planche decoupee du vivier, telle que son index.json la decrit.</summary>
+  /// <summary>Une planche du vivier : un repertoire, et les images qu'il contient.</summary>
   public sealed class ForgeSource
   {
     public string Name;
     public string Dir;
-    public int CellWidth;
-    public int CellHeight;
-    public int Cols;
-    public int Rows;
-    public int FrameCount;
 
     /// <summary>
-    /// Cases que le decoupage a ecartees parce qu'elles etaient identiques a une
-    /// autre. Voir <see cref="ForgeBank.Duplicates"/> : ce n'est pas anodin ici.
+    /// Les images du repertoire, triees par nom. Relevees sur le disque et nulle
+    /// part ailleurs : il n'y a plus d'index a tenir a jour, donc plus rien qui
+    /// puisse se desynchroniser du contenu reel.
     /// </summary>
-    public int DuplicatesDropped;
+    public List<ForgeCell> Cells = new List<ForgeCell>();
 
-    /// <summary>
-    /// Vrai si la forge sait tirer quelque chose de cette planche.
-    ///
-    /// La condition est la taille des cases, et rien d'autre. Toute la geometrie de
-    /// la forge - fenetre de decoupe en (3,7), image de sortie de 24 - a ete relevee
-    /// sur une case Broforce de 32. Appliquee a une case de 64, la meme fenetre
-    /// prelevle un coin de la creature au lieu de la creature : pas une erreur, une
-    /// image silencieusement fausse, ce qui est pire.
-    ///
-    /// On ne filtre volontairement PAS sur la taille du dessin, qui semblerait
-    /// pourtant plus direct : la planche d'Indianna, celle qui a produit l'archer de
-    /// reference, contient des images allant jusqu'a 26x26 pour une sortie de 24.
-    /// Ce sont des poses a fouet tendu, dont aucune ne figure parmi les seize a
-    /// choisir. Ecarter la planche pour ces quelques images ecarterait la meilleure
-    /// source du vivier.
-    /// </summary>
-    public bool CanPick;
+    public int FrameCount => Cells.Count;
+
+    /// <summary>Vrai si la forge sait tirer quelque chose de cette planche.</summary>
+    public bool CanPick => Cells.Count > 0;
 
     public override string ToString()
     {
@@ -50,30 +32,33 @@ namespace TFModFortRiseProfiles
   }
 
   /// <summary>
-  /// Le vivier : les images individuelles decoupees par script/slice_sheets.py.
+  /// Le vivier : les images individuelles dans lesquelles la forge puise.
   ///
-  /// Un repertoire par planche source, une image par case non vide, et un index.json
-  /// portant la taille des cases et la grille. La forge lit ces repertoires tels
-  /// quels - elle n'a besoin de rien d'autre, et surtout d'aucun format qui lui soit
-  /// propre : ce qui se regarde dans un explorateur de fichiers se debogue sans le
-  /// jeu.
+  /// Un repertoire par planche, un fichier PNG par pose. Rien d'autre : pas
+  /// d'index, pas de grille, aucun format propre a la forge. Ce qui se regarde dans
+  /// un explorateur de fichiers se debogue sans le jeu, une image ajoutee ou
+  /// remplacee a la main est vue telle quelle, et la taille d'une pose est celle de
+  /// son fichier - il n'existe aucune seconde source de verite avec laquelle elle
+  /// pourrait diverger.
   ///
-  /// Une case vide n'a pas de fichier. C'est le signal dont la forge se sert pour
-  /// dire qu'un emplacement reste a remplir, plutot que de livrer une pose
-  /// transparente sans rien signaler.
+  /// Les fichiers dont le nom commence par un souligne sont ignores : ce sont les
+  /// annexes du decoupage, la planche de contact notamment.
   /// </summary>
   public static class ForgeBank
   {
     private const string DirName = "sprites";
     private const string PathFile = "sprites.path";
 
+    /// <summary>Les extensions reconnues comme images.</summary>
+    private static readonly string[] Extensions = [".png"];
+
     private static List<ForgeSource> sources;
     private static string rootOverride;
 
-    private static string StorageRoot => TFModFortRiseProfilesModule.Instance.Context.Storage.StoragePath;
+    private static string StorageRoot => TFModFortRiseArcherModule.Instance.Context.Storage.StoragePath;
 
     /// <summary>
-    /// Ou vivent les images decoupees.
+    /// Ou vivent les images.
     ///
     /// Par defaut a cote des profils, ou un `slice_sheets.py --out` les depose. Un
     /// fichier `sprites.path` contenant un chemin le remplace : trente mille fichiers
@@ -127,6 +112,10 @@ namespace TFModFortRiseProfiles
       }
     }
 
+    /// <summary>
+    /// Relit le vivier. Appele a chaque entree dans la forge : un decoupage relance
+    /// a cote pendant que le jeu tourne doit etre vu sans redemarrer.
+    /// </summary>
     public static void Refresh()
     {
       rootOverride = null;
@@ -137,7 +126,7 @@ namespace TFModFortRiseProfiles
         if (!Directory.Exists(Root))
         {
           // Cree le repertoire au premier passage : le joueur doit pouvoir y deposer
-          // son vivier sans avoir a deviner le chemin.
+          // ses images sans avoir a deviner le chemin.
           Directory.CreateDirectory(Root);
           sources = found;
           return;
@@ -162,31 +151,50 @@ namespace TFModFortRiseProfiles
     }
 
     /// <summary>
-    /// Nombre de cases que le decoupage a ecartees comme doublons, sur tout le vivier.
+    /// Une planche, ou null si le repertoire ne contient aucune image.
     ///
-    /// Cela demande une explication, parce que c'est un piege discret.
-    /// slice_sheets.py n'ecrit qu'une fois deux cases rigoureusement identiques, ce
-    /// qui est raisonnable pour ranger des images et faux pour la forge : la case
-    /// ecartee n'a pas de fichier, la forge la croit vide, et l'emplacement
-    /// correspondant se retrouve comble par la pose debout. Un personnage dont la
-    /// deuxieme image de course est identique a la premiere se met alors a boiter,
-    /// sans que rien n'ait signale d'erreur.
-    ///
-    /// Le vivier de la forge doit donc etre decoupe avec --keep-duplicates. Ce
-    /// compte permet a l'ecran de le dire au lieu de laisser chercher.
+    /// Aucun fichier de description n'est requis ni lu : la planche EST son
+    /// repertoire.
     /// </summary>
-    public static int Duplicates
+    private static ForgeSource Read(string dir)
     {
-      get
+      try
       {
-        int total = 0;
-
-        foreach (ForgeSource source in Sources)
+        var source = new ForgeSource
         {
-          total += source.DuplicatesDropped;
+          Name = Path.GetFileName(dir),
+          Dir = dir
+        };
+
+        foreach (string file in Directory.GetFiles(dir))
+        {
+          if (Array.IndexOf(Extensions, Path.GetExtension(file).ToLowerInvariant()) < 0)
+          {
+            continue;
+          }
+
+          string name = Path.GetFileNameWithoutExtension(file);
+
+          if (name.StartsWith("_", StringComparison.Ordinal))
+          {
+            continue;
+          }
+
+          source.Cells.Add(new ForgeCell(name));
         }
 
-        return total;
+        if (source.Cells.Count == 0)
+        {
+          return null;
+        }
+
+        source.Cells.Sort((a, b) => string.Compare(a.File, b.File, StringComparison.OrdinalIgnoreCase));
+        return source;
+      }
+      catch (Exception e)
+      {
+        Log.Error($"[Forge] {Path.GetFileName(dir)} illisible : {e.Message}");
+        return null;
       }
     }
 
@@ -207,44 +215,18 @@ namespace TFModFortRiseProfiles
     }
 
     /// <summary>Combien de planches la forge sait exploiter.</summary>
-    public static int PickableCount
-    {
-      get
-      {
-        int count = 0;
-
-        foreach (ForgeSource source in Sources)
-        {
-          if (source.CanPick)
-          {
-            count++;
-          }
-        }
-
-        return count;
-      }
-    }
+    public static int PickableCount => PickableSources().Count;
 
     /// <summary>
     /// Combien de planches du vivier la forge ne sait pas exploiter.
     ///
-    /// Affiche a cote de la liste filtree : une planche deposee dans le vivier et
-    /// absente de l'ecran ferait chercher une faute de nom ou un decoupage rate,
-    /// alors qu'elle est simplement au mauvais format.
+    /// Vaut zero par construction depuis qu'une planche est simplement un
+    /// repertoire d'images : un repertoire sans image n'est plus liste du tout. Le
+    /// compte est garde parce que l'ecran l'affiche encore.
     /// </summary>
     public static int UnusableCount()
     {
-      int count = 0;
-
-      foreach (ForgeSource source in Sources)
-      {
-        if (!source.CanPick)
-        {
-          count++;
-        }
-      }
-
-      return count;
+      return Sources.Count - PickableCount;
     }
 
     public static ForgeSource Find(string name)
@@ -265,58 +247,11 @@ namespace TFModFortRiseProfiles
       return null;
     }
 
-    private static ForgeSource Read(string dir)
+    /// <summary>Les images d'une planche, dans l'ordre des noms de fichiers.</summary>
+    public static List<ForgeCell> CellsOf(ForgeSource source)
     {
-      try
-      {
-        string indexPath = Path.Combine(dir, "index.json");
-        if (!File.Exists(indexPath))
-        {
-          return null;
-        }
-
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(indexPath));
-        JsonElement root = doc.RootElement;
-
-        JsonElement cell = root.GetProperty("cell");
-        JsonElement grid = root.GetProperty("grid");
-
-        var source = new ForgeSource
-        {
-          Name = Path.GetFileName(dir),
-          Dir = dir,
-          CellWidth = cell.GetProperty("width").GetInt32(),
-          CellHeight = cell.GetProperty("height").GetInt32(),
-          Cols = grid.GetProperty("cols").GetInt32(),
-          Rows = grid.GetProperty("rows").GetInt32(),
-          FrameCount = root.TryGetProperty("frames", out JsonElement frames) ? frames.GetArrayLength() : 0,
-          DuplicatesDropped = root.TryGetProperty("duplicates_dropped", out JsonElement dropped)
-              ? dropped.GetInt32()
-              : 0
-        };
-
-        // Toute planche mesurable est choisissable, quelle que soit sa case.
-        //
-        // Le filtre valait tant que la forge n'avait qu'une fenetre de decoupe pour
-        // tout : posee sur une case d'une autre taille elle tombait a cote, et rien
-        // ne permettait de la rattraper. Depuis que chaque calque porte son propre
-        // decalage, une case de 48 ou de 64 se recadre - c'est meme le seul moyen
-        // d'employer une planche qui n'a pas ete decoupee pour cette forge.
-        source.CanPick =
-            source.CellWidth > 0 && source.CellHeight > 0 && source.FrameCount > 0;
-
-        return source;
-      }
-      catch (Exception e)
-      {
-        Log.Error($"[Forge] {Path.GetFileName(dir)} illisible : {e.Message}");
-        return null;
-      }
+      return source == null ? new List<ForgeCell>() : new List<ForgeCell>(source.Cells);
     }
-
-    // ------------------------------------------------------------------
-    // Lecture des images
-    // ------------------------------------------------------------------
 
     public static string PathOf(ForgeSource source, ForgeCell cell)
     {
@@ -337,43 +272,15 @@ namespace TFModFortRiseProfiles
     }
 
     /// <summary>
-    /// Les cases non vides d'une planche, dans l'ordre de lecture.
+    /// Les pixels d'une image, et sa taille reelle.
     ///
-    /// Lues sur le disque et non dans l'index : c'est le fichier qui fait foi, et un
-    /// index et un repertoire qui divergent doivent se resoudre en faveur de ce
-    /// qu'on peut reellement afficher.
+    /// Aucune taille attendue n'est comparee : le fichier EST la reference. C'est
+    /// ce qui permet de remplacer une image ou de relancer un decoupage pendant que
+    /// le jeu tourne sans que rien ne devienne illisible.
     /// </summary>
-    public static List<ForgeCell> CellsOf(ForgeSource source)
+    public static Color[] ReadCell(ForgeSource source, ForgeCell cell, out Point size)
     {
-      var list = new List<ForgeCell>();
-
-      if (source == null)
-      {
-        return list;
-      }
-
-      for (int row = 0; row < source.Rows; row++)
-      {
-        for (int col = 0; col < source.Cols; col++)
-        {
-          var cell = new ForgeCell(col, row);
-          if (Has(source, cell))
-          {
-            list.Add(cell);
-          }
-        }
-      }
-
-      return list;
-    }
-
-    /// <summary>
-    /// Pixels d'une case, ou null si elle est vide. Le tableau fait toujours la
-    /// taille de la case declaree : la forge decoupe dedans a coordonnees fixes, une
-    /// image plus petite lui ferait lire hors des clous.
-    /// </summary>
-    public static Color[] ReadCell(ForgeSource source, ForgeCell cell)
-    {
+      size = Point.Zero;
       string path = PathOf(source, cell);
 
       if (path == null || !File.Exists(path))
@@ -393,12 +300,7 @@ namespace TFModFortRiseProfiles
           return null;
         }
 
-        if (texture.Width != source.CellWidth || texture.Height != source.CellHeight)
-        {
-          Log.Error($"[Forge] {source.Name}/{cell} fait {texture.Width}x{texture.Height}, "
-                    + $"attendu {source.CellWidth}x{source.CellHeight}");
-          return null;
-        }
+        size = new Point(texture.Width, texture.Height);
 
         var pixels = new Color[texture.Width * texture.Height];
         texture.GetData(pixels);
@@ -406,15 +308,63 @@ namespace TFModFortRiseProfiles
       }
       catch (Exception e)
       {
-        Log.Error($"[Forge] {source.Name}/{cell} illisible : {e.Message}");
+        Log.Error($"[Forge] {source?.Name}/{cell} illisible : {e.Message}");
         return null;
       }
       finally
       {
-        // La texture n'a servi qu'a decoder le PNG. La garder mettrait une image de
-        // trente-deux pixels sur la carte graphique par case survolee.
+        // La texture n'a servi qu'a decoder le PNG. La garder mettrait une image
+        // sur la carte graphique par case survolee.
         try { texture?.Dispose(); } catch { }
       }
+    }
+
+    /// <summary>
+    /// Les pixels d'une image, ramenee dans la fenetre de decoupe si elle deborde.
+    ///
+    /// Le rapport largeur/hauteur est conserve : etirer une pose de 71x136 sur un
+    /// carre de 24 l'ecraserait. La reduction se fait au plus proche voisin, sans
+    /// interpolation - un sprite a bords francs doit le rester.
+    ///
+    /// Et on REDUIT seulement. Agrandir au plus proche voisin doublerait ou
+    /// triplerait les pixels, et une pose de 6x7 portee a 21x24 jurerait au milieu
+    /// d'un archer dessine au pixel. Mieux vaut une petite pose fidele qu'une
+    /// grande en gros carres.
+    /// </summary>
+    public static Color[] ReadCellFitted(ForgeSource source, ForgeCell cell, out Point size)
+    {
+      Color[] pixels = ReadCell(source, cell, out size);
+
+      if (pixels == null || size.X <= 0 || size.Y <= 0)
+      {
+        return pixels;
+      }
+
+      int frame = ForgeSlots.Frame;
+      float scale = Math.Min(frame / (float)size.X, frame / (float)size.Y);
+
+      if (scale >= 1f)
+      {
+        return pixels;
+      }
+
+      int width = Math.Max(1, (int)Math.Round(size.X * scale));
+      int height = Math.Max(1, (int)Math.Round(size.Y * scale));
+      var scaled = new Color[width * height];
+
+      for (int y = 0; y < height; y++)
+      {
+        int sourceY = Math.Min(size.Y - 1, (int)(y / scale));
+
+        for (int x = 0; x < width; x++)
+        {
+          int sourceX = Math.Min(size.X - 1, (int)(x / scale));
+          scaled[y * width + x] = pixels[sourceY * size.X + sourceX];
+        }
+      }
+
+      size = new Point(width, height);
+      return scaled;
     }
   }
 }

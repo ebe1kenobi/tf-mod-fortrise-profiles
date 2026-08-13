@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Une planche de pixels, avant qu'elle ne devienne une texture.</summary>
   public sealed class ForgeImage
@@ -44,6 +44,15 @@ namespace TFModFortRiseProfiles
   /// <summary>Tout ce qu'un archer forge a besoin de porter, en images.</summary>
   public sealed class ForgeArt
   {
+    /// <summary>
+    /// La taille d'une image de la planche, et l'ancre dedans.
+    ///
+    /// Portee jusqu'a l'enregistrement : c'est elle que le jeu doit recevoir, et
+    /// non une constante. Une planche faite d'images de 40 declaree en 24 serait
+    /// decoupee n'importe ou.
+    /// </summary>
+    public ForgeFrame Frame;
+
     public ForgeImage Body;
     public ForgeImage BodyRed;
     public ForgeImage BodyBlue;
@@ -53,10 +62,33 @@ namespace TFModFortRiseProfiles
     public ForgeImage CorpseBlue;
     public ForgeImage CorpseFlash;
 
-    /// <summary>Tetes vides. Le personnage porte la sienne dans son corps.</summary>
-    public ForgeImage Head;
+    /// <summary>
+    /// Les trois etats de tete que le jeu attend : nue, coiffee, couronnee.
+    ///
+    /// Vides quand le personnage porte sa tete dans son corps - le jeu exige les trois
+    /// planches meme alors, et les treize animations avec.
+    /// </summary>
+    public ForgeImage HeadNoHat;
 
-    /// <summary>Vrai si des images de tete ont ete choisies, donc si elle doit s'afficher.</summary>
+    public ForgeImage HeadNormal;
+    public ForgeImage HeadCrown;
+
+    /// <summary>
+    /// Les memes, aux couleurs des equipes.
+    ///
+    /// Deduites par deplacement de teinte comme le corps, et pour la meme raison :
+    /// une tete qui ne suivrait pas donnerait un archer vert sur un corps rouge. Le
+    /// deplacement est le meme que celui du corps, donc les deux restent d'accord.
+    /// </summary>
+    public ForgeImage HeadNoHatRed;
+
+    public ForgeImage HeadNoHatBlue;
+    public ForgeImage HeadNormalRed;
+    public ForgeImage HeadNormalBlue;
+    public ForgeImage HeadCrownRed;
+    public ForgeImage HeadCrownBlue;
+
+    /// <summary>Vrai si l'un des trois etats porte quelque chose, donc si la tete s'affiche.</summary>
     public bool HasHead;
 
     public ForgeImage Statue;
@@ -112,6 +144,10 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public static ForgeArt Build(ForgeDesign design)
     {
+      // Le cadre est mesure UNE fois sur toutes les poses : chaque planche assemblee
+      // doit avoir des images de taille identique, et l'ancre au meme endroit dans
+      // chacune. Le recalculer par pose ferait sautiller le personnage.
+      ForgeFrame frame = ForgeCompose.FrameOf(design);
       if (design == null || !design.Buildable)
       {
         return null;
@@ -120,20 +156,43 @@ namespace TFModFortRiseProfiles
       try
       {
         var art = new ForgeArt();
+        art.Frame = frame;
 
         // La pose debout sert de repli : une planche a trous ferait clignoter le
         // personnage, et le vide se remarque moins qu'un archer qui disparait en
         // sautant. Les emplacements ainsi combles sont rapportes, pour que l'ecran
         // puisse les signaler au lieu de les laisser passer pour un choix.
-        Color[] fallback = ReadPose(design, "stand");
+        Color[] fallback = ReadPose(design, "stand", frame);
         if (fallback == null)
         {
           Log.Error("[Forge] la pose debout est illisible, rien a fabriquer");
           return null;
         }
 
-        art.Body = Assemble(design, ForgeSheet.Body, fallback, art.Substituted);
-        art.Corpse = Assemble(design, ForgeSheet.Corpse, fallback, art.Substituted);
+        // Les tetes d'abord : c'est leur presence qui decide si la tete est montree
+        // pendant la glissade, donc de la facon dont les images de glissade du corps
+        // se deduisent.
+        //
+        // Une planche Broforce dessine deja la tete dans le corps : lui en poser une
+        // seconde par-dessus donnerait deux tetes. D'autres sources la separent, et
+        // c'est pour celles-la que ces emplacements existent. Sans image, on garde les
+        // planches vides d'avant - le jeu exige les treize animations meme pointant
+        // toutes sur du vide.
+        art.HeadNoHat = HeadStrip(design, ForgeSheet.Head, frame, art);
+        art.HeadNormal = HeadStrip(design, ForgeSheet.HeadNormal, frame, art);
+        art.HeadCrown = HeadStrip(design, ForgeSheet.HeadCrown, frame, art);
+
+        art.HeadNoHatRed = Tinted(art.HeadNoHat, RedHue);
+        art.HeadNoHatBlue = Tinted(art.HeadNoHat, BlueHue);
+        art.HeadNormalRed = Tinted(art.HeadNormal, RedHue);
+        art.HeadNormalBlue = Tinted(art.HeadNormal, BlueHue);
+        art.HeadCrownRed = Tinted(art.HeadCrown, RedHue);
+        art.HeadCrownBlue = Tinted(art.HeadCrown, BlueHue);
+
+        bool slideHead = design.SlideHead ?? art.HasHead;
+
+        art.Body = Assemble(design, ForgeSheet.Body, fallback, art.Substituted, frame, slideHead);
+        art.Corpse = Assemble(design, ForgeSheet.Corpse, fallback, art.Substituted, frame, slideHead);
 
         art.BodyRed = Tinted(art.Body, RedHue);
         art.BodyBlue = Tinted(art.Body, BlueHue);
@@ -142,27 +201,14 @@ namespace TFModFortRiseProfiles
         art.CorpseBlue = Tinted(art.Corpse, BlueHue);
         art.CorpseFlash = Silhouette(art.Corpse);
 
-        // La tete n'est assemblee que si des images lui ont ete choisies.
-        //
-        // Une planche Broforce dessine deja la tete dans le corps : lui en poser une
-        // seconde par-dessus donnerait deux tetes. D'autres sources la separent, et
-        // c'est pour celles-la que ces emplacements existent. Sans image, on garde la
-        // planche vide d'avant - le jeu exige les treize animations meme pointant
-        // toutes sur du vide.
-        art.HasHead = design.PickOf("head_idle") != null;
-
-        art.Head = art.HasHead
-            ? Assemble(design, ForgeSheet.Head, fallback, art.Substituted)
-            : new ForgeImage(ForgeSlots.Head.Length * ForgeSlots.Frame, ForgeSlots.Frame);
-
-        ForgeImage idle = FirstFrame(art.Body);
+        ForgeImage idle = FirstFrame(art.Body, frame);
         art.Statue = Statue(idle);
         art.PortraitJoined = Enlarged(idle, 60, 120, 4);
         art.PortraitNotJoined = Enlarged(idle, 60, 120, 4);
         art.PortraitWin = Enlarged(idle, 50, 50, 2);
         art.PortraitLose = Enlarged(idle, 50, 50, 2);
 
-        BuildHat(art, design);
+        BuildHat(art, design, frame);
 
         Borrow(art, design);
         return art;
@@ -184,6 +230,7 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public static ForgeImage BuildBody(ForgeDesign design, List<string> substituted = null)
     {
+      ForgeFrame frame = ForgeCompose.FrameOf(design);
       if (design == null || design.PickOf("stand") == null)
       {
         return null;
@@ -191,7 +238,7 @@ namespace TFModFortRiseProfiles
 
       try
       {
-        Color[] fallback = ReadPose(design, "stand");
+        Color[] fallback = ReadPose(design, "stand", frame);
 
         if (fallback == null)
         {
@@ -199,9 +246,10 @@ namespace TFModFortRiseProfiles
         }
 
         ForgeImage strip = Assemble(
-            design, ForgeSheet.Body, fallback, substituted ?? new List<string>());
+            design, ForgeSheet.Body, fallback, substituted ?? new List<string>(), frame,
+            design.SlideHead ?? design.HasHeadArt);
 
-        OverlayHead(strip, design);
+        OverlayHead(strip, design, frame);
         return strip;
       }
       catch (Exception e)
@@ -209,6 +257,128 @@ namespace TFModFortRiseProfiles
         Log.Error($"[Forge] apercu du corps impossible : {e.Message}");
         return null;
       }
+    }
+
+    /// <summary>
+    /// Une planche de tete : celle qu'on a choisie, ou celle qu'on en deduit.
+    ///
+    /// Le jeu veut trois planches - nue, coiffee, couronnee - et un dessin n'en change
+    /// le plus souvent que le sommet. Les redemander en entier ferait quinze images a
+    /// choisir pour dix qui seraient les memes ; on pose donc l'ornement sur la tete
+    /// nue, et les emplacements des deux etats ne servent qu'a reprendre la main.
+    ///
+    /// Sans tete nue mais avec un ornement, l'etat vaut l'ornement SEUL. Ce n'est pas
+    /// un cas limite, c'est le cas courant : un personnage qui porte sa tete dans son
+    /// corps ne peut pas perdre son chapeau, puisqu'il est dessine avec. Le sortir en
+    /// sprite de tete lui rend le seul effet de jeu qui lui manquait.
+    /// </summary>
+    private static ForgeImage HeadStrip(
+        ForgeDesign design, ForgeSheet sheet, ForgeFrame frame, ForgeArt art)
+    {
+      ForgeSlot[] slots = ForgeSlots.Of(sheet);
+      var strip = new ForgeImage(slots.Length * frame.Width, frame.Height);
+
+      Dictionary<uint, Color> swaps =
+          ColorPalette.SwapMap(design.Colors, ForgeColorSubject.GroupOf(sheet));
+
+      string ornament = ForgeSlots.OrnamentOf(sheet);
+
+      foreach (ForgeSlot slot in slots)
+      {
+        Color[] pose = HeadPose(design, slot, ornament, frame);
+
+        if (pose == null)
+        {
+          continue;
+        }
+
+        pose = (Color[])pose.Clone();
+        ColorPalette.Apply(pose, swaps, design.Colors);
+
+        art.HasHead = true;
+        int left = slot.Index * frame.Width;
+
+        for (int y = 0; y < frame.Height; y++)
+        {
+          Array.Copy(pose, y * frame.Width, strip.Pixels, y * strip.Width + left, frame.Width);
+        }
+      }
+
+      return strip;
+    }
+
+    /// <summary>
+    /// Une image de tete : celle qu'on a choisie pour cet etat, ou la tete nue avec
+    /// son ornement pose dessus.
+    /// </summary>
+    private static Color[] HeadPose(
+        ForgeDesign design, ForgeSlot slot, string ornament, ForgeFrame frame)
+    {
+      Color[] chosen = ReadPose(design, slot.Key, frame);
+
+      if (chosen != null)
+      {
+        return chosen;
+      }
+
+      ForgeSlot bare = ForgeSlots.BaseHeadOf(slot) ?? slot;
+
+      return Merge(
+          ReadPose(design, bare.Key, frame),
+          ornament == null ? null : ReadPose(design, ornament, frame));
+    }
+
+    /// <summary>
+    /// Les images de glissade coiffee et couronnee, quand elles ne sont pas choisies.
+    ///
+    /// Elles ne different de la glissade nue que si la tete est CACHEE a ce
+    /// moment-la : c'est alors le corps qui doit porter le couvre-chef, et c'est la
+    /// seule raison pour laquelle le jeu prevoit trois images. Quand la tete reste
+    /// affichee, elle porte deja l'ornement, et le poser une seconde fois sur le corps
+    /// en ferait deux.
+    /// </summary>
+    private static Color[] Slide(
+        ForgeDesign design, ForgeSlot slot, ForgeFrame frame, bool slideHead)
+    {
+      if (slot.Key != "slide_normal" && slot.Key != "slide_crown")
+      {
+        return null;
+      }
+
+      Color[] bare = ReadPose(design, "slide", frame);
+
+      if (bare == null || slideHead)
+      {
+        return bare;
+      }
+
+      return Merge(bare, ReadPose(design, slot.Key == "slide_crown" ? "crown" : "hat_normal", frame));
+    }
+
+    /// <summary>Pose la seconde image sur la premiere. Null si les deux manquent.</summary>
+    private static Color[] Merge(Color[] under, Color[] over)
+    {
+      if (over == null)
+      {
+        return under;
+      }
+
+      if (under == null)
+      {
+        return over;
+      }
+
+      var merged = (Color[])under.Clone();
+
+      for (int i = 0; i < merged.Length && i < over.Length; i++)
+      {
+        if (over[i].A != 0)
+        {
+          merged[i] = over[i];
+        }
+      }
+
+      return merged;
     }
 
     /// <summary>
@@ -224,17 +394,25 @@ namespace TFModFortRiseProfiles
     /// sens dans un apercu qui se contente de derouler les poses du corps.
     ///
     /// La superposition est directe parce que la tete est cadree comme le corps, dans
-    /// la meme fenetre, et que HeadYOrigins vaut alors Frame - le jeu les empile donc
-    /// exactement de la meme facon. Voir ForgeSlots.HeadYOrigins.
+    /// la meme fenetre, et que HeadYOrigins vaut alors l'ancre du cadre - le jeu les
+    /// empile donc exactement de la meme facon. Voir ForgeSlots.HeadYOrigins.
+    ///
+    /// Avec un detail qui n'en est pas un : la tete DESCEND sur certaines poses, de ce
+    /// que dit ForgeDesign.HeadOffsets. Sans ce report, l'apercu montrerait une tete
+    /// rigide posee sur un corps qui s'accroupit, et l'on croirait le reglage sans
+    /// effet alors qu'il ne manque qu'a l'image.
     /// </summary>
-    private static void OverlayHead(ForgeImage strip, ForgeDesign design)
+    private static void OverlayHead(ForgeImage strip, ForgeDesign design, ForgeFrame frame)
     {
-      if (strip == null || design.PickOf("head_idle") == null)
+      if (strip == null)
       {
         return;
       }
 
-      Color[] head = ReadPose(design, "head_idle");
+      // L'etat coiffe et non la tete nue : c'est celui que le jeu montre au depart,
+      // et c'est aussi le seul moyen de voir ou tombe un chapeau pose en ornement.
+      Color[] head = HeadPose(
+          design, ForgeSlots.HeadNormal[0], ForgeSlots.OrnamentOf(ForgeSheet.HeadNormal), frame);
 
       if (head == null)
       {
@@ -247,19 +425,32 @@ namespace TFModFortRiseProfiles
       ColorPalette.Apply(
           head, ColorPalette.SwapMap(design.Colors, SpritePartGroups.Head), design.Colors);
 
-      int size = ForgeSlots.Frame;
+      ForgeSlot[] poses = ForgeSlots.Of(ForgeSheet.Body);
 
-      for (int left = 0; left + size <= strip.Width; left += size)
+      for (int index = 0; index * frame.Width + frame.Width <= strip.Width; index++)
       {
-        for (int y = 0; y < size; y++)
+        int left = index * frame.Width;
+
+        // Une ancre plus basse dessine la tete plus haut : l'ecart la fait donc
+        // descendre, exactement comme le jeu le fera avec le meme nombre.
+        int drop = index < poses.Length ? design.HeadOffsetOf(poses[index].Key) : 0;
+
+        for (int y = 0; y < frame.Height; y++)
         {
-          for (int x = 0; x < size; x++)
+          int targetY = y + drop;
+
+          if (targetY < 0 || targetY >= frame.Height)
           {
-            Color pixel = head[y * size + x];
+            continue;
+          }
+
+          for (int x = 0; x < frame.Width; x++)
+          {
+            Color pixel = head[y * frame.Width + x];
 
             if (pixel.A != 0)
             {
-              strip[left + x, y] = pixel;
+              strip[left + x, targetY] = pixel;
             }
           }
         }
@@ -286,30 +477,30 @@ namespace TFModFortRiseProfiles
     /// Sans image normale, il n'y a pas de chapeau du tout et l'archer part tete nue.
     /// Les variantes d'equipe manquantes sont deduites par teinte, comme le reste.
     /// </summary>
-    private static void BuildHat(ForgeArt art, ForgeDesign design)
+    private static void BuildHat(ForgeArt art, ForgeDesign design, ForgeFrame frame)
     {
-      art.Hat = Trimmed(Cutout(design, "hat_normal"));
+      art.Hat = Trimmed(Cutout(design, "hat_normal", frame));
 
       if (art.Hat == null)
       {
         return;
       }
 
-      art.HatRed = Trimmed(Cutout(design, "hat_red")) ?? Tinted(art.Hat, RedHue);
-      art.HatBlue = Trimmed(Cutout(design, "hat_blue")) ?? Tinted(art.Hat, BlueHue);
+      art.HatRed = Trimmed(Cutout(design, "hat_red", frame)) ?? Tinted(art.Hat, RedHue);
+      art.HatBlue = Trimmed(Cutout(design, "hat_blue", frame)) ?? Tinted(art.Hat, BlueHue);
     }
 
     /// <summary>Image d'un emplacement, a la taille de la fenetre, ou null.</summary>
-    private static ForgeImage Cutout(ForgeDesign design, string slotKey)
+    private static ForgeImage Cutout(ForgeDesign design, string slotKey, ForgeFrame frame)
     {
-      Color[] pixels = ReadPose(design, slotKey);
+      Color[] pixels = ReadPose(design, slotKey, frame);
 
       if (pixels == null)
       {
         return null;
       }
 
-      var image = new ForgeImage(ForgeSlots.Frame, ForgeSlots.Frame);
+      var image = new ForgeImage(frame.Width, frame.Height);
       Array.Copy(pixels, image.Pixels, Math.Min(pixels.Length, image.Pixels.Length));
       return image;
     }
@@ -388,17 +579,17 @@ namespace TFModFortRiseProfiles
     /// ecrans : la fabrication ne fait qu'y decouper la fenetre. Deux assemblages
     /// separes finiraient par diverger d'un pixel, et c'est l'apercu qu'on croirait.
     /// </summary>
-    private static Color[] ReadPose(ForgeDesign design, string slotKey)
+    private static Color[] ReadPose(ForgeDesign design, string slotKey, ForgeFrame frame)
     {
-      return ForgeCompose.Cut(ForgeCompose.Pose(design, slotKey));
+      return ForgeCompose.Cut(ForgeCompose.Pose(design, slotKey), frame);
     }
 
     private static ForgeImage Assemble(
-        ForgeDesign design, ForgeSheet sheet, Color[] fallback, List<string> substituted)
+        ForgeDesign design, ForgeSheet sheet, Color[] fallback, List<string> substituted,
+        ForgeFrame frame, bool slideHead)
     {
       ForgeSlot[] slots = ForgeSlots.Of(sheet);
-      int size = ForgeSlots.Frame;
-      var strip = new ForgeImage(slots.Length * size, size);
+      var strip = new ForgeImage(slots.Length * frame.Width, frame.Height);
 
       // La table de remplacement est calculee une fois par planche et non par pose :
       // toutes les poses d'une planche partagent la meme famille de couleurs.
@@ -407,7 +598,7 @@ namespace TFModFortRiseProfiles
 
       foreach (ForgeSlot slot in slots)
       {
-        Color[] pose = ReadPose(design, slot.Key);
+        Color[] pose = ReadPose(design, slot.Key, frame) ?? Slide(design, slot, frame, slideHead);
 
         if (pose == null)
         {
@@ -421,28 +612,27 @@ namespace TFModFortRiseProfiles
         pose = (Color[])pose.Clone();
         ColorPalette.Apply(pose, swaps, design.Colors);
 
-        int left = slot.Index * size;
+        int left = slot.Index * frame.Width;
 
-        for (int y = 0; y < size; y++)
+        for (int y = 0; y < frame.Height; y++)
         {
-          Array.Copy(pose, y * size, strip.Pixels, y * strip.Width + left, size);
+          Array.Copy(pose, y * frame.Width, strip.Pixels, y * strip.Width + left, frame.Width);
         }
       }
 
       return strip;
     }
 
-    private static ForgeImage FirstFrame(ForgeImage strip)
+    private static ForgeImage FirstFrame(ForgeImage strip, ForgeFrame frame)
     {
-      int size = ForgeSlots.Frame;
-      var frame = new ForgeImage(size, size);
+      var first = new ForgeImage(frame.Width, frame.Height);
 
-      for (int y = 0; y < size; y++)
+      for (int y = 0; y < frame.Height; y++)
       {
-        Array.Copy(strip.Pixels, y * strip.Width, frame.Pixels, y * size, size);
+        Array.Copy(strip.Pixels, y * strip.Width, first.Pixels, y * frame.Width, frame.Width);
       }
 
-      return frame;
+      return first;
     }
 
     // ------------------------------------------------------------------

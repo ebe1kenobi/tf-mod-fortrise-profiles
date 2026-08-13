@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// L'archer forge vu par les ecrans de couleur.
@@ -95,7 +95,7 @@ namespace TFModFortRiseProfiles
 
       foreach (ForgeSlot slot in ForgeSlots.Of(sheet))
       {
-        Color[] pose = ForgeCompose.Cut(ForgeCompose.Pose(design, slot.Key));
+        Color[] pose = ForgeCompose.Cut(ForgeCompose.Pose(design, slot.Key), ForgeCompose.FrameOf(design));
 
         if (pose != null)
         {
@@ -137,7 +137,14 @@ namespace TFModFortRiseProfiles
         case ForgeSheet.Hat:
           return SpritePartGroups.Hat;
         case ForgeSheet.Head:
+        case ForgeSheet.HeadNormal:
+        case ForgeSheet.HeadCrown:
           return SpritePartGroups.Head;
+
+        // La couronne se recolore avec le chapeau : ce sont les deux couvre-chefs, et
+        // les separer donnerait un archer dont la couronne jure avec le sien.
+        case ForgeSheet.Crown:
+          return SpritePartGroups.Hat;
         default:
           return SpritePartGroups.Body;
       }

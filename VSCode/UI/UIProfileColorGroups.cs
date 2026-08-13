@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Recoloration par familles de teinte : une couleur choisie pour tous les violets,
@@ -44,14 +44,14 @@ namespace TFModFortRiseProfiles
 
       if (subject == null || subject.Trial == null)
       {
-        Main.State = ColorEditing.BackState;
+        MenuNav.Switch(Main, ColorEditing.BackState);
         return;
       }
 
       trial = subject.Trial;
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileColorGroups>());
-      Main.BackState = ColorEditing.BackState;
+      Main.BackState = MenuNav.Arrive(Main, ColorEditing.BackState);
       Main.TweenBGCameraToY(2);
 
       // Les profils d'avant la recoloration par partie portent des remplacements
@@ -67,7 +67,9 @@ namespace TFModFortRiseProfiles
       Main.Add(preview.Item);
       preview.Rebuild();
 
-      Build(0);
+      // Zero n'est le bon rang qu'a la premiere visite : au retour d'un sous-ecran,
+      // on veut la ligne qu'on avait quittee.
+      Build(MenuNav.Resume(Main, int.MaxValue));
     }
 
     public override void Destroy()
@@ -82,18 +84,21 @@ namespace TFModFortRiseProfiles
 
       UIMenuRow switchRow = MakeRow(items.Count, "SWITCH TO ONE BY ONE");
 
-      switchRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileColors>();
+      switchRow.OnConfirmed = () => MenuNav.Switch(Main, ModRegisters.MenuState<UIProfileColors>());
 
       items.Add(switchRow);
 
       UIMenuRow adjustRow = MakeRow(items.Count, "ADJUST");
 
-      adjustRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIProfileAdjust>();
+      adjustRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIProfileAdjust>());
 
       items.Add(adjustRow);
 
       items.AddRange(UIColorPartRows.Build(
-          FirstRowY + 2f * RowStep, RowStep, RowX, ContentWidth, () => Rebuild(0), subject.Groups));
+          FirstRowY + 2f * RowStep, RowStep, RowX, ContentWidth, items.Count,
+          // Le curseur reste sur la case qu'on vient de cocher : la liste des teintes
+          // change sous elle, mais on est en train d'en cocher plusieurs.
+          index => Rebuild(index), subject.Groups));
 
       int firstFamilyRow = items.Count;
       List<string> parts = ColorSelection.Parts(subject);
@@ -137,6 +142,7 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (items.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
 
+      MenuNav.Track(Main, items);
       MenuItem toSelect = items[Math.Clamp(selectIndex, 0, items.Count - 1)];
       Main.ToStartSelected = toSelect;
 

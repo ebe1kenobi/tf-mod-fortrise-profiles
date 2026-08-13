@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les seize emplacements, un par ligne : la voie manuelle.
@@ -45,12 +45,12 @@ namespace TFModFortRiseProfiles
 
       if (design == null)
       {
-        Main.State = ModRegisters.MenuState<UIForgeList>();
+        MenuNav.Switch(Main, ModRegisters.MenuState<UIForgeList>());
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeFrames>());
-      Main.BackState = editState;
+      Main.BackState = MenuNav.Arrive(Main, editState);
       Main.TweenBGCameraToY(2);
 
       thumb = new UIForgeCellThumb(ThumbPosition);
@@ -74,11 +74,18 @@ namespace TFModFortRiseProfiles
       {
         (ForgeSheet.Body, "-- CORPS --"),
         (ForgeSheet.Corpse, "-- CADAVRE --"),
-        (ForgeSheet.Hat, "-- CHAPEAU --"),
+        (ForgeSheet.Hat, "-- HAT --"),
+        (ForgeSheet.Crown, "-- CROWN --"),
 
         // Facultative, et posee en dernier pour cette raison : une planche qui dessine
         // deja la tete dans le corps n'en veut pas une seconde.
-        (ForgeSheet.Head, "-- TETE (FACULTATIF) --")
+        (ForgeSheet.Head, "-- HEAD (OPTIONAL) --"),
+
+        // Deduites du chapeau et de la couronne poses sur la tete nue : on ne descend
+        // ici que lorsque le deduit ne convient pas. D'ou le dernier rang, et le mot
+        // qui le dit.
+        (ForgeSheet.HeadNormal, "-- HAT HEAD (DERIVED) --"),
+        (ForgeSheet.HeadCrown, "-- CROWN HEAD (DERIVED) --")
       };
 
       foreach (var group in groups)
@@ -103,7 +110,7 @@ namespace TFModFortRiseProfiles
             // chemin le plus court reste celui qu'on emprunte a chaque pose ; le
             // reglage fin, lui, ne sert qu'une fois la pose en place.
             OnAlt = () => Layers(captured),
-            AltGuide = "CALQUES"
+            AltGuide = "LAYERS"
           };
 
           if (string.Equals(slot.Key, EditingSlot, StringComparison.Ordinal))
@@ -185,8 +192,7 @@ namespace TFModFortRiseProfiles
     private void Pick(ForgeSlot slot)
     {
       EditingSlot = slot.Key;
-      UIForgeFramePicker.ReturnToLayers = false;
-      Main.State = ModRegisters.MenuState<UIForgeFramePicker>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeFramePicker>());
     }
 
     /// <summary>
@@ -200,7 +206,7 @@ namespace TFModFortRiseProfiles
     {
       EditingSlot = slot.Key;
       UIForgeLayers.EditingSlot = slot.Key;
-      Main.State = ModRegisters.MenuState<UIForgeLayers>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeLayers>());
     }
   }
 
@@ -218,12 +224,20 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public class UIForgeCellThumb : UIForgePanel
   {
+    /// <summary>C'est l'ecran des poses qui porte la bascule d'agrandissement.</summary>
+    protected override bool AllowZoomToggle => true;
+
     private Texture2D texture;
     private int width;
     private int height;
     private int windowX;
     private int windowY;
-    private float zoom = 4f;
+    /// <summary>
+    /// Derive et non memorise : le facteur peut changer a tout moment (gachette
+    /// gauche), et un zoom fige a l'affichage n'aurait bouge qu'au changement
+    /// d'ecran.
+    /// </summary>
+    private float zoom => ZoomFor(width, height);
     private string caption;
 
     public UIForgeCellThumb(Vector2 position) : base(position)
@@ -264,7 +278,6 @@ namespace TFModFortRiseProfiles
         height = pose.Height;
         windowX = pose.WindowX;
         windowY = pose.WindowY;
-        zoom = ZoomFor(pose.Width, pose.Height);
 
         // Le nom de la case ne veut plus rien dire des qu'il y en a plusieurs : on
         // dit alors combien, ce qui est la seule chose verifiable d'un coup d'oeil.
@@ -302,12 +315,8 @@ namespace TFModFortRiseProfiles
         Draw.SpriteBatch.Draw(texture, corner, null, Color.White, 0f, Vector2.Zero,
             zoom, SpriteEffects.None, 0f);
 
-        // Le cadre de ce que la forge gardera.
-        Draw.HollowRect(new Rectangle(
-            (int)(corner.X + windowX * zoom),
-            (int)(corner.Y + windowY * zoom),
-            (int)(ForgeSlots.Frame * zoom),
-            (int)(ForgeSlots.Frame * zoom)), Color.Orange * 0.8f);
+        // La place que tiendrait un archer du jeu, pour comparer.
+        DrawVanillaFrame(corner, windowX + ForgeSlots.AnchorX, windowY + ForgeSlots.AnchorY, zoom);
       }
 
       if (!string.IsNullOrEmpty(caption))

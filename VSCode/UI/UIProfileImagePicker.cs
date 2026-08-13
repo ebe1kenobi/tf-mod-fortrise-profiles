@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using FortRise;
@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Choix du PNG d'un emplacement. Valider affecte le fichier et revient a la liste :
@@ -39,12 +39,12 @@ namespace TFModFortRiseProfiles
 
       if (profile == null || string.IsNullOrEmpty(slot))
       {
-        Main.State = listState;
+        MenuNav.Switch(Main, listState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileImagePicker>());
-      Main.BackState = listState;
+      Main.BackState = MenuNav.Arrive(Main, listState);
       Main.TweenBGCameraToY(2);
 
       Main.Add(new UIPickerHeader(new Vector2(160f, 34f), profile.Name, ProfileImages.Label(slot)));
@@ -78,7 +78,7 @@ namespace TFModFortRiseProfiles
           {
             if (ProfileImages.Assign(profile, slot, file))
             {
-              Main.State = listState;
+              MenuNav.Switch(Main, listState);
             }
             else
             {
@@ -108,7 +108,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()

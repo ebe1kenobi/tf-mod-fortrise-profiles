@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Quel profil joue sur quel emplacement joueur.

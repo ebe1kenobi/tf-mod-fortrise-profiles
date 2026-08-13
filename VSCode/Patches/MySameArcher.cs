@@ -3,7 +3,7 @@ using FortRise;
 using HarmonyLib;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Autorise plusieurs joueurs a prendre le meme archer.

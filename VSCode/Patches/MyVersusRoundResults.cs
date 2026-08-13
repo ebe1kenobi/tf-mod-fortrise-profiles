@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using FortRise;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -6,7 +6,7 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Noms sur l'ecran de resultats de manche.

@@ -1,9 +1,50 @@
 using System.Collections.Generic;
 
-namespace TFModFortRiseProfiles;
+namespace TFModFortRiseArcher;
 
-public class ApiImplementation : IProfilesModApi, IProfilesRosterApi
+public class ApiImplementation : IProfilesModApi, IProfilesRosterApi, IProfilesPowerApi, IProfilesPower2Api, IProfilesPowerKeysApi
 {
+  /// <summary>
+  /// Les touches choisies pour le pouvoir de cet emplacement. Tableau vide quand le
+  /// profil n'en impose aucune : l'appelant garde alors les siennes.
+  /// </summary>
+  public int[] GetPlayerPowerButtons(int playerIndex, int slot)
+  {
+    ProfileData profile = ProfileAssignment.Get(playerIndex);
+    if (profile == null)
+    {
+      return System.Array.Empty<int>();
+    }
+
+    return (slot == 0 ? profile.PadPowerLeft : profile.PadPowerRight) ?? System.Array.Empty<int>();
+  }
+
+  public int[] GetPlayerPowerKeys(int playerIndex, int slot)
+  {
+    ProfileData profile = ProfileAssignment.Get(playerIndex);
+    if (profile == null)
+    {
+      return System.Array.Empty<int>();
+    }
+
+    return (slot == 0 ? profile.KeyPowerLeft : profile.KeyPowerRight) ?? System.Array.Empty<int>();
+  }
+
+  /// <summary>
+  /// Relu a chaque appel : Power le demande en jeu, et le profil rattache a
+  /// l'emplacement a pu changer entre deux manches.
+  /// </summary>
+  public string GetPlayerPower(int playerIndex)
+  {
+    return ProfileAssignment.Get(playerIndex)?.Power ?? "";
+  }
+
+  /// <summary>Le pouvoir de la seconde gachette. Meme lecture, autre rubrique.</summary>
+  public string GetPlayerPower2(int playerIndex)
+  {
+    return ProfileAssignment.Get(playerIndex)?.Power2 ?? "";
+  }
+
   // En dur pour l'instant : des que le mod est charge, il tient le rollcall. Le jour
   // ou cela devient une option, c'est cette propriete qui la refletera, sans que les
   // mods appelants aient a changer.

@@ -1,4 +1,4 @@
-namespace TFModFortRiseProfiles;
+namespace TFModFortRiseArcher;
 
 /// <summary>
 /// La liste des profils, pour les mods qui composent leur propre roster.

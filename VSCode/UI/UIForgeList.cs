@@ -4,7 +4,7 @@ using FortRise;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// La liste des archers forges, ouverte depuis l'ecran des profils.
@@ -38,9 +38,15 @@ namespace TFModFortRiseProfiles
 
     public override void Create()
     {
+      // Relit le vivier a chaque entree dans la forge. Sans cela le scan des
+      // repertoires et des index.json n'a lieu qu'une fois par lancement du jeu :
+      // un decoupage relance a cote continue d'etre juge sur les anciennes
+      // dimensions, et les images refusees pour "taille inattendue".
+      ForgeBank.Refresh();
+
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeList>());
 
-      Main.BackState = ModRegisters.MenuState<UIProfilesMenu>();
+      Main.BackState = MenuNav.Arrive(Main, ModRegisters.MenuState<UIProfilesMenu>());
       Main.TweenBGCameraToY(2);
 
       preview = new UIForgePreview(PreviewPosition);
@@ -48,7 +54,9 @@ namespace TFModFortRiseProfiles
       items.Clear();
       items.Add(preview);
 
-      Build(0);
+      // Zero n'est le bon rang qu'a la premiere visite : au retour d'un sous-ecran,
+      // on veut la ligne qu'on avait quittee.
+      Build(MenuNav.Resume(Main, int.MaxValue));
     }
 
     public override void Destroy()
@@ -74,7 +82,14 @@ namespace TFModFortRiseProfiles
       // ferait chercher les manquantes.
       int sources = ForgeBank.PickableCount;
 
-      UIMenuRow bankRow = MakeRow(1, "IMAGE BANK");
+      // Reprendre un archer installe plutot que d'en dessiner un. La ligne est en
+      // haut avec la creation parce que c'est la meme chose : les deux facons de
+      // commencer un archer, l'une a partir de rien, l'autre a partir d'un existant.
+      UIMenuRow importRow = MakeRow(1, "IMPORT ARCHER");
+      importRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIForgeImport>());
+      rows.Add(importRow);
+
+      UIMenuRow bankRow = MakeRow(2, "IMAGE BANK");
       bankRow.RightText = () => BankLabel(sources);
       rows.Add(bankRow);
 
@@ -109,6 +124,7 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
 
+      MenuNav.Track(Main, rows);
       MenuItem toSelect = rows[Math.Clamp(selectIndex, 0, rows.Count - 1)];
       Main.ToStartSelected = toSelect;
 
@@ -133,14 +149,7 @@ namespace TFModFortRiseProfiles
       return string.IsNullOrEmpty(design.Name) ? "(UNNAMED)" : design.Name;
     }
 
-    /// <summary>
-    /// L'etat du vivier, et son defaut le plus couteux avant tout le reste.
-    ///
-    /// Un vivier decoupe sans --keep-duplicates a perdu des cases identiques a
-    /// d'autres. La forge les croit vides et comble avec la pose debout : le
-    /// personnage se met a boiter sans qu'aucune erreur ne soit signalee nulle part.
-    /// C'est le genre de panne qu'on cherche pendant une heure faute d'un mot ici.
-    /// </summary>
+    /// <summary>L'etat du vivier, en deux mots.</summary>
     private static string BankLabel(int sources)
     {
       if (sources == 0)
@@ -148,7 +157,7 @@ namespace TFModFortRiseProfiles
         return "EMPTY";
       }
 
-      return ForgeBank.Duplicates > 0 ? "RESLICE NEEDED" : sources + " SHEETS";
+      return sources + " SHEETS";
     }
 
     /// <summary>
@@ -209,14 +218,14 @@ namespace TFModFortRiseProfiles
       preview?.Show(null);
 
       // removedIndex compte dans la liste des archers ; les lignes ont en plus la
-      // creation et le vivier en tete.
-      Build(removedIndex + 2);
+      // creation, l'import et le vivier en tete.
+      Build(removedIndex + 3);
     }
 
     private void Edit(ForgeDesign design)
     {
       Editing = design;
-      Main.State = ModRegisters.MenuState<UIForgeEdit>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeEdit>());
     }
 
     /// <summary>

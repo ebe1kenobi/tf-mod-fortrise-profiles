@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Les cases a cocher qui ouvrent les deux ecrans de couleur : sur quelles parties
@@ -17,9 +17,13 @@ namespace TFModFortRiseProfiles
     /// <summary>
     /// Construit une ligne par partie, cochable a la validation.
     /// </summary>
+    /// <param name="firstIndex">
+    /// Rang de la premiere de ces lignes dans l'ecran. Sert a rendre au rappel le
+    /// rang de la ligne cochee, pour que le curseur y reste apres reconstruction.
+    /// </param>
     /// <param name="onChanged">
-    /// Appele apres chaque bascule : l'ecran doit se reconstruire, la palette ne
-    /// portant plus sur les memes planches.
+    /// Appele apres chaque bascule, avec le rang de la ligne cochee : l'ecran doit se
+    /// reconstruire, la palette ne portant plus sur les memes planches.
     /// </param>
     /// <param name="groups">
     /// Les familles a proposer. Elles viennent du sujet et non de la liste complete :
@@ -27,14 +31,15 @@ namespace TFModFortRiseProfiles
     /// sans effet - une case qui ne fait rien est pire qu'une case absente.
     /// </param>
     public static List<UIMenuRow> Build(
-        float firstY, float step, float x, float contentWidth, Action onChanged,
-        IReadOnlyList<string> groups)
+        float firstY, float step, float x, float contentWidth, int firstIndex,
+        Action<int> onChanged, IReadOnlyList<string> groups)
     {
       var rows = new List<UIMenuRow>();
 
       foreach (string group in groups)
       {
         string captured = group;
+        int index = firstIndex + rows.Count;
         float y = firstY + rows.Count * step;
         var from = new Vector2(rows.Count % 2 == 0 ? -240f : 560f, y);
 
@@ -45,7 +50,7 @@ namespace TFModFortRiseProfiles
           OnConfirmed = () =>
           {
             ColorSelection.Toggle(captured);
-            onChanged();
+            onChanged(index);
           }
         });
       }

@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// La voix d'un archer forge : une voix de repli, puis les sons qui la remplacent.
@@ -55,17 +55,17 @@ namespace TFModFortRiseProfiles
 
       if (design == null)
       {
-        Main.State = editState;
+        MenuNav.Switch(Main, editState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeVoice>());
-      Main.BackState = editState;
+      Main.BackState = MenuNav.Arrive(Main, editState);
       Main.TweenBGCameraToY(2);
 
       var rows = new List<UIMenuRow>();
 
-      UIMenuRow fallbackRow = MakeRow(rows.Count, "VOIX DE REPLI");
+      UIMenuRow fallbackRow = MakeRow(rows.Count, "FALLBACK VOICE");
       fallbackRow.RightText = () => ForgeVoice.FallbackLabel(design.VoiceFallback);
       fallbackRow.OnLeft = () => CycleFallback(-1);
       fallbackRow.OnRight = () => CycleFallback(1);
@@ -140,7 +140,7 @@ namespace TFModFortRiseProfiles
       }
 
       return ForgeVoice.PathOf(design, action.Key) == null
-          ? "INTROUVABLE"
+          ? "FILE MISSING"
           : UIForgeEdit.Shorten(Path.GetFileNameWithoutExtension(file).ToUpperInvariant());
     }
 
@@ -152,7 +152,7 @@ namespace TFModFortRiseProfiles
     private void Open(ForgeVoiceAction action)
     {
       EditingAction = action.Key;
-      Main.State = ModRegisters.MenuState<UIForgeVoicePicker>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeVoicePicker>());
     }
 
     private void Clear(ForgeVoiceAction action)

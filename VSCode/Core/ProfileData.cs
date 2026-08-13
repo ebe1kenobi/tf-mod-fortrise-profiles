@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Un profil de joueur, tel qu'il est serialise dans Profiles.profiles.json.
@@ -53,6 +53,39 @@ namespace TFModFortRiseProfiles
     public string Costume { get; set; } = ProfileCostumes.Normal;
 
     /// <summary>
+    /// Pouvoir du mod Aura, par son identifiant ("Kamehameha", "Kienzan"...), ou
+    /// vide pour suivre le pouvoir par defaut regle dans Aura.
+    ///
+    /// Une chaine et non un enum : la liste des pouvoirs appartient a Aura, qui
+    /// peut en ajouter sans que Profiles le sache. Un profil enregistre avec un
+    /// pouvoir devenu inconnu - Aura desinstalle, pouvoir retire - reste lisible et
+    /// retombe simplement sur le defaut.
+    /// </summary>
+    public string Power { get; set; } = "";
+
+    /// <summary>
+    /// Second pouvoir, sur l'autre gachette du haut. Memes regles que le premier :
+    /// vide pour suivre le defaut regle dans le mod Power.
+    ///
+    /// Une propriete a part plutot qu'une liste : les emplacements sont deux, fixes
+    /// par les deux gachettes, et une liste laisserait croire qu'on peut en ajouter.
+    /// </summary>
+    public string Power2 { get; set; } = "";
+
+    /// <summary>
+    /// Musique de fin de manche quand ce profil gagne, ou vide pour laisser celle de
+    /// l'archer.
+    ///
+    /// Meme encodage que celle d'un archer forge - le nom d'une piste du jeu, ou
+    /// "file:" suivi d'un fichier de la banque music - parce que c'est la meme liste
+    /// qu'on fait defiler, et qu'un jour on voudra copier l'une dans l'autre.
+    ///
+    /// Distincte du son WIN de l'ecran des sons : ce dernier est une voix, jouee
+    /// par-dessus. Celle-ci remplace la piste.
+    /// </summary>
+    public string VictoryMusic { get; set; } = "";
+
+    /// <summary>
     /// Mappage manette propre au profil, ou null pour suivre celui du jeu.
     ///
     /// GamepadConfig porte [JsonInclude] sur chacun de ses champs : il se serialise
@@ -65,6 +98,31 @@ namespace TFModFortRiseProfiles
 
     /// <summary>Mappage clavier propre au profil, ou null pour suivre celui du jeu.</summary>
     public KeyboardConfig Keyboard { get; set; }
+
+    /// <summary>
+    /// Les quatre touches que le jeu ne connait pas.
+    ///
+    /// TowerFall n'a QU'UNE action d'esquive, a laquelle on assigne une liste de
+    /// boutons d'un coup. Ici elle est coupee en deux - une touche a gauche, une a
+    /// droite - et deux touches de plus servent aux deux pouvoirs du mod Power, qui
+    /// les lit par interop au lieu de LB/RB en dur.
+    ///
+    /// L'esquive du jeu reste alimentee : DashLeft et DashRight y sont reversees
+    /// ensemble (voir ProfileControls.SyncDodge). Ce sont donc bien quatre touches
+    /// pour deux roles, et non quatre actions nouvelles.
+    ///
+    /// Stockees en entiers et non en Buttons/Keys : le fichier de profil reste
+    /// lisible et ne depend pas des valeurs d'une enumeration du jeu ou de XNA.
+    /// </summary>
+    public int[] PadDashLeft { get; set; }
+    public int[] PadDashRight { get; set; }
+    public int[] PadPowerLeft { get; set; }
+    public int[] PadPowerRight { get; set; }
+
+    public int[] KeyDashLeft { get; set; }
+    public int[] KeyDashRight { get; set; }
+    public int[] KeyPowerLeft { get; set; }
+    public int[] KeyPowerRight { get; set; }
 
     /// <summary>
     /// Couleurs du sprite remplacees, en hexadecimal RRGGBB.

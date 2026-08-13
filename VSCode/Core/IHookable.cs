@@ -1,6 +1,6 @@
 using FortRise;
 
-namespace TFModFortRiseProfiles;
+namespace TFModFortRiseArcher;
 
 public interface IHookable
 {

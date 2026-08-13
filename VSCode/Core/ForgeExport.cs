@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -6,7 +6,7 @@ using FortRise;
 using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Ecrit un archer forge sous la forme d'un mod FortRise autonome.
@@ -40,19 +40,19 @@ namespace TFModFortRiseProfiles
     {
       if (design == null)
       {
-        return "AUCUN ARCHER";
+        return "NO ARCHER";
       }
 
       if (!design.Buildable)
       {
-        return "IL MANQUE LE NOM OU LA POSE DEBOUT";
+        return "NAME OR STAND POSE MISSING";
       }
 
       ForgeArt art = ForgeBuild.Build(design);
 
       if (art == null)
       {
-        return "ASSEMBLAGE IMPOSSIBLE";
+        return "BUILD FAILED";
       }
 
       try
@@ -72,8 +72,17 @@ namespace TFModFortRiseProfiles
         WritePng(art.CorpseBlue, sprites, "player/corpses", name + "-blueTeam.png");
         WritePng(art.CorpseFlash, sprites, "player/corpses", name + "-flash.png");
 
-        WritePng(art.Head, sprites, "player/head", name + "NoHat.png");
-        WritePng(art.Head, sprites, "player/head", name + "Crown.png");
+        WritePng(art.HeadNoHat, sprites, "player/head", name + "NoHat.png");
+        WritePng(art.HeadNoHatRed, sprites, "player/head", name + "NoHat_red.png");
+        WritePng(art.HeadNoHatBlue, sprites, "player/head", name + "NoHat_blue.png");
+
+        WritePng(art.HeadNormal, sprites, "player/head", name + "Normal.png");
+        WritePng(art.HeadNormalRed, sprites, "player/head", name + "Normal_red.png");
+        WritePng(art.HeadNormalBlue, sprites, "player/head", name + "Normal_blue.png");
+
+        WritePng(art.HeadCrown, sprites, "player/head", name + "Crown.png");
+        WritePng(art.HeadCrownRed, sprites, "player/head", name + "Crown_red.png");
+        WritePng(art.HeadCrownBlue, sprites, "player/head", name + "Crown_blue.png");
 
         WritePng(art.Statue, sprites, "player/statues", name + ".png");
         WritePng(art.PortraitNotJoined, sprites, "portraits", "notJoined" + name + ".png");
@@ -107,8 +116,9 @@ namespace TFModFortRiseProfiles
         string spriteData = Path.Combine(root, "Content", "Atlas", "SpriteData");
 
         WriteText(Path.Combine(gameData, "archerData.xml"), ArcherXml(design));
-        WriteText(Path.Combine(spriteData, "spriteData.xml"), SpriteXml(design));
-        WriteText(Path.Combine(spriteData, "corpseSpriteData.xml"), CorpseXml(design));
+        WriteText(Path.Combine(spriteData, "spriteData.xml"),
+            SpriteXml(design, art.Frame, art.HasHead));
+        WriteText(Path.Combine(spriteData, "corpseSpriteData.xml"), CorpseXml(design, art.Frame));
         WriteText(Path.Combine(spriteData, "menuSpriteData.xml"), MenuXml(design));
 
         if (art.Substituted.Count > 0)
@@ -123,7 +133,7 @@ namespace TFModFortRiseProfiles
       catch (Exception e)
       {
         Log.Error($"[Forge] export de {design.Name} impossible : {e}");
-        return "ECRITURE IMPOSSIBLE";
+        return "WRITE FAILED";
       }
     }
 
@@ -310,7 +320,7 @@ namespace TFModFortRiseProfiles
       xml.Append(VoiceXml(design));
       xml.AppendLine("    <Sprites>");
       xml.AppendLine($"      <Body>@{name}</Body>");
-      xml.AppendLine($"      <HeadNormal>@{name}NoHat</HeadNormal>");
+      xml.AppendLine($"      <HeadNormal>@{name}Normal</HeadNormal>");
       xml.AppendLine($"      <HeadNoHat>@{name}NoHat</HeadNoHat>");
       xml.AppendLine($"      <HeadCrown>@{name}Crown</HeadCrown>");
       xml.AppendLine($"      <Bow>@{name}Bow</Bow>");
@@ -372,7 +382,7 @@ namespace TFModFortRiseProfiles
       return xml.ToString();
     }
 
-    private static string SpriteXml(ForgeDesign design)
+    private static string SpriteXml(ForgeDesign design, ForgeFrame frame, bool hasHead)
     {
       string name = design.Name;
       var xml = new StringBuilder();
@@ -380,29 +390,34 @@ namespace TFModFortRiseProfiles
       xml.AppendLine("<SpriteData>");
       xml.AppendLine();
       xml.AppendLine("  <!--");
-      xml.AppendLine("    Produit par la forge. Images de 24x24 et non 20x20 comme les archers");
-      xml.AppendLine("    d'origine : un personnage Broforce fait 13 pixels de large debout, mais");
-      xml.AppendLine("    ses bras tendus vont jusqu'a 16, et une planche de 20 les rognait.");
-      xml.AppendLine("    L'origine suit : 24 en bas, 14 en x - deux pixels a droite du centre,");
-      xml.AppendLine("    comme chez tous les archers du jeu.");
+      xml.AppendLine("    Produit par la forge. La taille des images n'est pas une constante : elle");
+      xml.AppendLine("    est mesuree sur les poses choisies, de facon que rien ne soit rogne. Les");
+      xml.AppendLine("    archers d'origine tiennent dans 20x20, un personnage Broforce demande 24,");
+      xml.AppendLine("    une planche plus grande demandera davantage.");
+      xml.AppendLine();
+      xml.AppendLine("    L'origine est le point du dessin que le jeu pose sur la position de");
+      xml.AppendLine("    l'entite : les pieds, et deux pixels a droite du centre du corps - c'est");
+      xml.AppendLine("    ainsi que sont cales tous les archers du jeu, arc devant eux.");
       xml.AppendLine("  -->");
       xml.AppendLine();
       xml.AppendLine($"  <sprite_string id=\"{name}\">");
       xml.AppendLine($"    <Texture>Content/Atlas/sprites/player/{name}.png</Texture>");
       xml.AppendLine($"    <RedTexture>Content/Atlas/sprites/player/{name}_red.png</RedTexture>");
       xml.AppendLine($"    <BlueTexture>Content/Atlas/sprites/player/{name}_blue.png</BlueTexture>");
-      xml.AppendLine("    <FrameWidth>24</FrameWidth>");
-      xml.AppendLine("    <FrameHeight>24</FrameHeight>");
-      xml.AppendLine("    <OriginX>14</OriginX>");
-      xml.AppendLine("    <OriginY>24</OriginY>");
+      xml.AppendLine($"    <FrameWidth>{frame.Width}</FrameWidth>");
+      xml.AppendLine($"    <FrameHeight>{frame.Height}</FrameHeight>");
+      xml.AppendLine($"    <OriginX>{frame.OriginX}</OriginX>");
+      xml.AppendLine($"    <OriginY>{frame.OriginY}</OriginY>");
       xml.AppendLine("    <X>0</X>");
       xml.AppendLine("    <Y>8</Y>");
       xml.AppendLine();
       xml.AppendLine("    <!--");
-      xml.AppendLine("      La tete est dessinee dans le corps : la masquer pendant la glissade");
-      xml.AppendLine("      d'esquive evite d'en poser une seconde par-dessus.");
+      xml.AppendLine("      Faut-il dessiner la tete pendant la glissade d'esquive ? Non quand le");
+      xml.AppendLine("      corps la porte deja - en poser une seconde par-dessus en ferait deux -");
+      xml.AppendLine("      oui quand elle est fournie a part. Un archer importe garde la reponse");
+      xml.AppendLine("      de son mod d'origine.");
       xml.AppendLine("    -->");
-      xml.AppendLine("    <SlideHead>False</SlideHead>");
+      xml.AppendLine($"    <SlideHead>{((design.SlideHead ?? hasHead) ? "True" : "False")}</SlideHead>");
       xml.AppendLine();
       xml.AppendLine("    <Animations>");
       xml.AppendLine("      <Anim id=\"stand\" frames=\"0\"/>");
@@ -414,8 +429,8 @@ namespace TFModFortRiseProfiles
       xml.AppendLine("      <Anim id=\"dodge\" delay=\".1\" frames=\"7\"/>");
       xml.AppendLine("      <Anim id=\"duck\" frames=\"9\"/>");
       xml.AppendLine("      <Anim id=\"slide_nohat\" frames=\"8\"/>");
-      xml.AppendLine("      <Anim id=\"slide_normal\" frames=\"8\"/>");
-      xml.AppendLine("      <Anim id=\"slide_crown\" frames=\"8\"/>");
+      xml.AppendLine("      <Anim id=\"slide_normal\" frames=\"10\"/>");
+      xml.AppendLine("      <Anim id=\"slide_crown\" frames=\"11\"/>");
       xml.AppendLine("    </Animations>");
       xml.AppendLine("    <!--");
       xml.AppendLine("      Une valeur par image du corps : la hauteur a laquelle le jeu accroche");
@@ -423,14 +438,18 @@ namespace TFModFortRiseProfiles
       xml.AppendLine("      indexe sans borne par l'image courante : un tableau plus court que la");
       xml.AppendLine("      planche fait tomber le jeu en plein match.");
       xml.AppendLine("    -->");
+      // Le cas "le dessin porte sa propre tete" doit passer ici aussi : sans lui, un
+      // archer a tete exporte sortirait avec les hauteurs relevees sur les planches
+      // Broforce, qui n'ont rien a voir avec l'ancre de son cadre.
       xml.AppendLine("    <HeadYOrigins>"
-                     + string.Join(",", ForgeSlots.HeadYOrigins())
+                     + string.Join(",", ForgeSlots.HeadYOrigins(design, hasHead, frame.OriginY))
                      + "</HeadYOrigins>");
       xml.AppendLine("  </sprite_string>");
       xml.AppendLine();
 
-      AppendHeadSprite(xml, name, "NoHat", 7);
-      AppendHeadSprite(xml, name, "Crown", 8);
+      AppendHeadSprite(xml, name, "NoHat", 7, frame);
+      AppendHeadSprite(xml, name, "Normal", 8, frame);
+      AppendHeadSprite(xml, name, "Crown", 8, frame);
 
       xml.AppendLine("  <!--");
       xml.AppendLine("    Arc repris du jeu et repeint. Meme decoupage que l'original :");
@@ -479,18 +498,25 @@ namespace TFModFortRiseProfiles
     /// Le jeu exige les treize animations meme si elles pointent toutes sur du vide.
     /// Les ecrire n'est pas une precaution : sans elles le sprite ne se construit pas.
     /// </summary>
-    private static void AppendHeadSprite(StringBuilder xml, string name, string suffix, int y)
+    private static void AppendHeadSprite(
+        StringBuilder xml, string name, string suffix, int y, ForgeFrame frame)
     {
-      string path = $"Content/Atlas/sprites/player/head/{name}{suffix}.png";
+      string path = $"Content/Atlas/sprites/player/head/{name}{suffix}";
 
       xml.AppendLine($"  <sprite_string id=\"{name}{suffix}\">");
-      xml.AppendLine($"    <Texture>{path}</Texture>");
-      xml.AppendLine($"    <RedTexture>{path}</RedTexture>");
-      xml.AppendLine($"    <BlueTexture>{path}</BlueTexture>");
-      xml.AppendLine("    <FrameWidth>10</FrameWidth>");
-      xml.AppendLine("    <FrameHeight>10</FrameHeight>");
-      xml.AppendLine("    <OriginX>6</OriginX>");
-      xml.AppendLine("    <OriginY>0</OriginY>");
+      xml.AppendLine($"    <Texture>{path}.png</Texture>");
+      xml.AppendLine($"    <RedTexture>{path}_red.png</RedTexture>");
+      xml.AppendLine($"    <BlueTexture>{path}_blue.png</BlueTexture>");
+      // Au cadre du CORPS et non aux 10x10 des archers d'origine : la planche ecrite
+      // juste a cote est faite de la meme facon, images du corps et images de tete
+      // cadrees dans la meme fenetre. Declarer 10x10 la decouperait en morceaux.
+      //
+      // OriginY est sans effet - Player l'ecrase a chaque image avec HeadYOrigins -
+      // mais on l'ecrit juste quand meme : un fichier qui ment finit par etre lu.
+      xml.AppendLine($"    <FrameWidth>{frame.Width}</FrameWidth>");
+      xml.AppendLine($"    <FrameHeight>{frame.Height}</FrameHeight>");
+      xml.AppendLine($"    <OriginX>{frame.OriginX}</OriginX>");
+      xml.AppendLine($"    <OriginY>{frame.OriginY}</OriginY>");
       xml.AppendLine("    <X>0</X>");
       xml.AppendLine($"    <Y>{y.ToString(CultureInfo.InvariantCulture)}</Y>");
       xml.AppendLine("    <Animations>");
@@ -521,7 +547,7 @@ namespace TFModFortRiseProfiles
     /// cherche dans TFGame.CorpseSpriteData ; declare dans spriteData.xml, le cadavre
     /// serait introuvable et le jeu tomberait a la premiere mort.
     /// </summary>
-    private static string CorpseXml(ForgeDesign design)
+    private static string CorpseXml(ForgeDesign design, ForgeFrame frame)
     {
       string name = design.Name;
       var xml = new StringBuilder();
@@ -533,8 +559,16 @@ namespace TFModFortRiseProfiles
       xml.AppendLine($"    <BlueTeam>Content/Atlas/sprites/player/corpses/{name}-blueTeam.png</BlueTeam>");
       xml.AppendLine($"    <RedTeam>Content/Atlas/sprites/player/corpses/{name}-redTeam.png</RedTeam>");
       xml.AppendLine($"    <Flash>Content/Atlas/sprites/player/corpses/{name}-flash.png</Flash>");
-      xml.AppendLine("    <FrameWidth>24</FrameWidth>");
-      xml.AppendLine("    <FrameHeight>24</FrameHeight>");
+      xml.AppendLine($"    <FrameWidth>{frame.Width}</FrameWidth>");
+      xml.AppendLine($"    <FrameHeight>{frame.Height}</FrameHeight>");
+      xml.AppendLine();
+      xml.AppendLine("    <!--");
+      xml.AppendLine("      L'ancre est celle du corps, le cadavre etant fabrique dans le meme");
+      xml.AppendLine("      cadre. Le jeu ne la demande pas ici, mais la forge la relit a l'import :");
+      xml.AppendLine("      sans elle, un cadavre repris se reposerait de travers.");
+      xml.AppendLine("    -->");
+      xml.AppendLine($"    <OriginX>{frame.OriginX}</OriginX>");
+      xml.AppendLine($"    <OriginY>{frame.OriginY}</OriginY>");
       xml.AppendLine("    <Animations>");
       xml.AppendLine("      <Anim id=\"ground\" frames=\"0\"/>");
       xml.AppendLine("      <Anim id=\"fall\" frames=\"1\"/>");

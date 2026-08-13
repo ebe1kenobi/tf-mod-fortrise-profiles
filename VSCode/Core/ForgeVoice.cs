@@ -2,13 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Une action sonore d'archer, et son libelle a l'ecran.</summary>
   public sealed class ForgeVoiceAction
   {
     public readonly string Key;
-    public readonly string Label;
+
+    /// <summary>
+    /// Ce que l'ecran affiche : la cle, ses souligne changes en espaces.
+    ///
+    /// Derive et non ecrit a cote, pour que l'ecran VOICE de la forge et l'ecran
+    /// SOUNDS d'un profil nomment un meme son de la MEME facon - ils lisent tous
+    /// deux SoundEvents.Label. Deux libelles a tenir en accord finissent toujours par
+    /// diverger, et le fichier exporte porte de toute facon le nom de la cle.
+    /// </summary>
+    public string Label => SoundEvents.Label(Key);
 
     /// <summary>
     /// Vrai pour les sons a variantes : le jeu en tire un au hasard. Le chargeur les
@@ -19,10 +28,9 @@ namespace TFModFortRiseProfiles
     /// <summary>Vrai pour les sons tenus en boucle tant que l'etat dure.</summary>
     public readonly bool Looped;
 
-    internal ForgeVoiceAction(string key, string label, bool varied = false, bool looped = false)
+    internal ForgeVoiceAction(string key, bool varied = false, bool looped = false)
     {
       Key = key;
-      Label = label;
       Varied = varied;
       Looped = looped;
     }
@@ -54,27 +62,27 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public static readonly ForgeVoiceAction[] Actions =
     {
-      new ForgeVoiceAction("READY", "PRET", varied: true),
-      new ForgeVoiceAction("JUMP", "SAUT"),
-      new ForgeVoiceAction("LAND", "ATTERRISSAGE"),
-      new ForgeVoiceAction("DUCK", "ACCROUPI"),
-      new ForgeVoiceAction("GRAB", "AGRIPPE"),
-      new ForgeVoiceAction("FIRE_ARROW", "TIR"),
-      new ForgeVoiceAction("NOFIRE", "CARQUOIS VIDE"),
-      new ForgeVoiceAction("AIM", "VISEE"),
-      new ForgeVoiceAction("AIM_DIR", "VISEE DIRIGEE"),
-      new ForgeVoiceAction("AIM_CANCEL", "VISEE ANNULEE"),
-      new ForgeVoiceAction("ARROW_GRAB", "FLECHE RAMASSEE"),
-      new ForgeVoiceAction("ARROW_RECOVER", "FLECHE RECUPEREE"),
-      new ForgeVoiceAction("ARROW_STEAL", "FLECHE VOLEE"),
-      new ForgeVoiceAction("DIE", "MORT"),
-      new ForgeVoiceAction("DIE_BOMB", "MORT PAR BOMBE"),
-      new ForgeVoiceAction("DIE_LASER", "MORT PAR LASER"),
-      new ForgeVoiceAction("DIE_STOMP", "MORT PIETINE"),
-      new ForgeVoiceAction("DIE_ENV", "MORT PAR LE DECOR"),
-      new ForgeVoiceAction("REVIVE", "RESURRECTION"),
-      new ForgeVoiceAction("DESELECT", "DESELECTION"),
-      new ForgeVoiceAction("WALLSLIDE_LOOP", "GLISSADE", looped: true)
+      new ForgeVoiceAction("READY", varied: true),
+      new ForgeVoiceAction("JUMP"),
+      new ForgeVoiceAction("LAND"),
+      new ForgeVoiceAction("DUCK"),
+      new ForgeVoiceAction("GRAB"),
+      new ForgeVoiceAction("FIRE_ARROW"),
+      new ForgeVoiceAction("NOFIRE"),
+      new ForgeVoiceAction("AIM"),
+      new ForgeVoiceAction("AIM_DIR"),
+      new ForgeVoiceAction("AIM_CANCEL"),
+      new ForgeVoiceAction("ARROW_GRAB"),
+      new ForgeVoiceAction("ARROW_RECOVER"),
+      new ForgeVoiceAction("ARROW_STEAL"),
+      new ForgeVoiceAction("DIE"),
+      new ForgeVoiceAction("DIE_BOMB"),
+      new ForgeVoiceAction("DIE_LASER"),
+      new ForgeVoiceAction("DIE_STOMP"),
+      new ForgeVoiceAction("DIE_ENV"),
+      new ForgeVoiceAction("REVIVE"),
+      new ForgeVoiceAction("DESELECT"),
+      new ForgeVoiceAction("WALLSLIDE_LOOP", looped: true)
     };
 
     /// <summary>
@@ -87,24 +95,24 @@ namespace TFModFortRiseProfiles
     /// </summary>
     public static readonly (int Id, string Label)[] Fallbacks =
     {
-      (0, "VERT"),
-      (1, "BLEU"),
-      (2, "ROSE"),
+      (0, "GREEN"),
+      (1, "BLUE"),
+      (2, "PINK"),
       (3, "ORANGE"),
-      (4, "BLANC"),
-      (5, "JAUNE"),
+      (4, "WHITE"),
+      (5, "YELLOW"),
       (6, "CYAN"),
-      (7, "VIOLET"),
-      (8, "ROUGE"),
-      (10, "VERT ALT"),
-      (11, "BLEU ALT"),
-      (12, "ROSE ALT"),
+      (7, "PURPLE"),
+      (8, "RED"),
+      (10, "GREEN ALT"),
+      (11, "BLUE ALT"),
+      (12, "PINK ALT"),
       (13, "ORANGE ALT"),
-      (14, "BLANC ALT"),
-      (15, "JAUNE ALT"),
+      (14, "WHITE ALT"),
+      (15, "YELLOW ALT"),
       (16, "CYAN ALT"),
-      (17, "VIOLET ALT"),
-      (18, "ROUGE ALT")
+      (17, "PURPLE ALT"),
+      (18, "RED ALT")
     };
 
     public static ForgeVoiceAction Get(string key)

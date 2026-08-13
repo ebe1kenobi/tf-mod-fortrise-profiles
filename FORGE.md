@@ -71,6 +71,136 @@ Les deux facons de faire coexistent, et c'est la meme liste dans les deux cas :
 - **Par personnage** : une planche source, seize poses posees, on corrige.
 - **A la main** : aucune source, chaque pose se choisit dans le vivier.
 
+### Les trois etats de couvre-chef
+
+Le jeu montre un archer de trois facons : tete nue, coiffe, couronne. C'est la tete
+qui change, jamais le corps - **sauf pendant la glissade**, ou la tete est cachee et
+ou le corps doit donc porter le couvre-chef lui-meme. D'ou trois images de glissade,
+et trois planches de tete.
+
+La forge les DEDUIT plutot que de les faire redessiner :
+
+| A fournir | Ce qu'on en tire |
+|---|---|
+| Les cinq images de tete nue | `HeadNoHat` |
+| `CHAPEAU` (celui qui s'envole deja) | `HeadNormal` = tete nue + chapeau |
+| `COURONNE`, une image | `HeadCrown` = tete nue + couronne |
+| `GLISSADE` | `GLISSADE CHAPEAU` et `GLISSADE COURONNE`, ornement pose seulement si la tete est cachee |
+
+Les emplacements `TETE COIFFEE` et `TETE COURONNEE` existent quand meme, pour
+reprendre la main : une casquette qui change la silhouette, un archer repris d'un mod
+qui fournit ses trois planches. Une image choisie l'emporte toujours sur le deduit.
+
+Le cas qui vaut le detour : **un dessin sans tete du tout, mais avec un chapeau.**
+L'etat coiffe vaut alors le chapeau SEUL, et l'etat nu reste vide. Un personnage qui
+porte sa tete dans son corps - tout ce qui sort d'une planche Broforce - ne peut pas
+perdre un chapeau dessine avec lui ; sorti en sprite de tete, il s'envole. C'est le
+seul effet de jeu des archers d'origine qui manquait encore, et il ne coute qu'une
+image.
+
+L'ornement se cale par son propre decalage de calque, comme n'importe quelle image.
+
+Les trois planches sont **teintees par equipe** comme le corps, par le meme
+deplacement de teinte. Sans cela un archer a tete separee gardait sa tete verte sur
+un corps rouge - et le chapeau avec, puisqu'il y est pose. Les emplacements
+`CHAPEAU BLEU` et `CHAPEAU ROUGE` restent utiles au chapeau qui S'ENVOLE, qui est une
+image a part et non un morceau du personnage.
+
+### La tete qui suit le corps
+
+Le jeu accroche la tete a une hauteur **par image du corps** : chez l'archer vert 19
+debout, 20 sur la premiere image de course, 15 accroupi. C'est ce qui fait qu'une
+tete vit au lieu de flotter.
+
+`TETE Y`, dans l'ecran des calques d'une pose du corps, regle cet ecart. L'import le
+releve tout seul sur un archer repris ; cette ligne est le seul moyen de le donner a
+un archer dessine ici.
+
+Le sens est celui de la forge - a droite, le personnage descend - alors que la valeur
+enregistree est un ecart d'ANCRE, dont le sens est l'inverse. Le retournement a lieu
+une fois, dans `ForgeSlots.HeadYOrigins`, et nulle part ailleurs.
+
+### Ce que la forge ne represente toujours pas
+
+Releve sur l'archer vert, qui est le modele du genre :
+
+| Planche | Images | Citees | Ce que la forge en prend |
+|---|---|---|---|
+| Corps | 48 | 35 | 12 |
+| Tete x3 etats | 24 chacune | 17 | 5 chacune |
+
+- **La glissade est une animation de huit images** chez les archers du jeu ; la forge
+  n'en pose qu'une, tenue le temps de la glissade.
+- **La tete a dix-sept images** : les cinq de base, plus des variantes de chute - qui
+  alternent sur deux images, la tete ballotte - et de saut. Les treize animations de
+  la forge pointent toutes sur ses cinq images.
+
+Rien de tout cela n'empeche un archer de fonctionner : on perd du mouvement, pas des
+poses.
+
+### Retoucher les images : taille et rognage
+
+`TAILLE / ROGNAGE` sur la fiche regle **toutes les images d'un coup** ; la meme ligne
+dans l'ecran des calques ne regle que **l'image courante**. C'est le meme ecran :
+ce sont les memes reglages, sur un nombre different d'images.
+
+| Ligne | Ce qu'elle fait |
+|---|---|
+| `TAILLE` | Pourcentage de la taille du fichier, par pas de 5. |
+| `ROGNER GAUCHE/DROITE/HAUT/BAS` | Pixels retires de chaque bord, comptes sur le fichier. |
+| `MIROIR H` / `MIROIR V` | Retourne l'image dans son cadre, sans le deplacer. |
+| `ROTATION` | Autour du centre de l'image, par crans de 15 degres. |
+| `DETOURER` | Rogne chaque image sur ses pixels opaques - image par image, chacune ayant son propre vide autour d'elle. |
+| `REINITIALISER` | Rend les images telles qu'elles sont dans le vivier. |
+
+Quatre choses a savoir, et aucune ne se devine :
+
+- **Rien n'est ecrit dans le vivier.** Une retouche est un reglage du dessin : elle
+  se defait, et la meme image servie a deux archers peut y etre reglee autrement.
+- **La taille est absolue**, en pourcentage du fichier. Reposer 40% deux fois donne
+  la meme image ; un reglage relatif reduirait a chaque passage.
+- **On reduit autour de l'ANCRE**, pas du coin de l'image. L'ancre est le point que
+  le jeu pose sur la position du personnage - les pieds au sol. Reduire depuis le
+  coin ferait flotter en l'air tout ce qu'on rapetisse.
+- **Le rognage ne deplace pas ce qui reste** : il compense de lui-meme le decalage
+  qu'il provoque, sinon chaque bord retire demanderait un recalage.
+
+Le miroir horizontal merite un mot : ce n'est pas un effet, c'est une reprise. Les
+archers du jeu sont dessines tournes vers la DROITE, arc devant eux, et c'est le jeu
+qui retourne l'image pour l'autre sens. Une planche prise ailleurs et dessinee vers
+la gauche donne donc un personnage qui court a reculons - sur toutes les images a la
+fois, cette ligne la remet d'aplomb.
+
+La rotation tourne autour du centre de l'image, le centre restant en place : le cadre
+s'agrandit de ce qu'il faut pour que rien ne sorte, et le decalage suit tout seul.
+**Les quarts de tour sont exacts** - une transposition, pas un echantillonnage :
+quatre fois 90 degres rendent l'image d'origine au pixel pres, et le compte de pixels
+opaques ne bouge pas. Les autres angles perdent quelques pixels au passage - 3 sur 156
+a 45 degres sur la pose debout de Brones - ce qui reste utilisable pour incliner un
+bras ou coucher un cadavre, mais ne doit pas servir a redresser une planche.
+
+Tout se fait au plus proche voisin, sans interpolation - un sprite a bords francs
+doit le rester. Une reduction mange donc des colonnes entieres, et une reduction
+forte peut poser les pieds un pixel trop haut ; les facteurs ronds - une moitie, un
+quart - sont les plus surs, et `WINDOW Y` rattrape le reste.
+
+### Le cadre orange, et les apercus a taille reelle
+
+Les apercus sont a la **taille reelle** du sprite tel qu'il sera en jeu, du premier
+ecran au dernier. Un apercu agrandi flatte toujours, et l'on ne decouvre qu'apres
+l'export que le personnage fait deux fois la taille d'un archer. La gachette gauche
+fait defiler 1x, 2x, 4x, 8x pour examiner un detail ; le reglage est commun a tous
+les ecrans.
+
+Le rectangle orange ne decoupe plus rien - le cadre reel se mesure sur les images
+choisies, voir `ForgeCompose.FrameOf`. Il montre desormais **la place que tiendrait
+un archer du jeu** : 12x20, ancre au bas et deux pixels a droite du centre, comme le
+vert et le jaune. Cale sur la meme ancre que la pose, pieds au sol - deux rectangles
+de tailles differentes ne se comparent que s'ils reposent au meme endroit.
+
+La question qu'il repond est la seule qui compte devant une image reprise ailleurs :
+de combien ce personnage depasse-t-il un archer d'origine ?
+
 ## Le vivier
 
 `script/slice_sheets.py` decoupe les planches en images individuelles, un
@@ -175,12 +305,16 @@ choses.
 | `ForgeBuild.cs` | L'assemblage : construit les `Texture2D` accolees a partir des images choisies, plus les variantes rouge, bleue et flash. |
 | `ForgeRegister.cs` | L'enregistrement a chaud dans FortRise. |
 | `ForgeExport.cs` | L'ecriture d'un mod autonome sur le disque. |
+| `ForgeImport.cs` | Le chemin inverse : reprend un archer installe, decoupe ses planches dans le vivier et rend un dessin qui les designe. |
+| `ForgePixels.cs` | Les retouches d'une image : rogner ses bords, changer sa taille, relever ses marges transparentes. |
 
 ### UI
 
 | Ecran | Ce qu'il fait |
 |---|---|
-| `UIForgeList` | La liste des archers forges. `+ NEW ARCHER`, `Alt` pour supprimer. |
+| `UIForgeList` | La liste des archers forges. `+ NEW ARCHER`, `IMPORT ARCHER`, `Alt` pour supprimer. |
+| `UIForgeImport` | Les archers installes qu'on peut reprendre, un par ligne, avec le mod d'ou ils viennent. |
+| `UIForgeAdjust` | La taille et le rognage des images : toutes a la fois depuis la fiche, une seule depuis les calques. |
 | `UIForgeEdit` | La fiche : `NAME0`, `NAME1`, `COLORS`, `SOURCE`, `FRAMES`, `TEST`, `EXPORT`. |
 | `UIForgeSource` | Le choix de la planche source, avec apercu de la pose debout. |
 | `UIForgeFrames` | Les seize emplacements, vignette a cote de chacun. Un emplacement vide se voit. |
@@ -206,6 +340,26 @@ L'ordre est impose par les dependances :
 3. `RegisterCorpseSprite<string>` pour le cadavre.
 4. `RegisterMenuSprite<string>` pour la gemme du rollcall.
 5. `RegisterArcher` avec l'`ArcherConfiguration` qui les rassemble.
+
+### Reessayer le meme archer
+
+`TEST IN GAME` se rappelle autant de fois qu'on veut. On ne reenregistre pas
+l'archer - FortRise ne sait pas en retirer un, et un second sous le meme nom
+laisserait deux entrees dont une morte : on **remplace ce que la premiere montre**.
+
+C'est possible parce que rien n'est fige dans un `ArcherData` : ses sprites y sont
+designes par un identifiant, resolu a l'apparition du joueur, et ses images par
+l'objet lui-meme. `ForgeRegister.Apply` refait donc les memes affectations que
+`ModArchers.Invoke` au premier essai, sur la structure deja en place. L'index de
+l'archer ne bouge pas, donc rien ne se decale.
+
+Deux consequences a connaitre :
+
+- Un joueur deja en piste garde les planches avec lesquelles il est ne. Il faut
+  relancer la partie, pas le jeu.
+- Ce qui a ete enregistre entre-temps - textures, sprites, sons - reste dans les
+  registres. On ne peut pas les en retirer, et ce sont quelques planches par essai
+  dans une session ou l'on essaie justement.
 
 ### Le piege des particules
 
@@ -249,6 +403,83 @@ Deux regles apprises a la dure sur Brones, et qui valent pour le generateur :
   `spriteData.xml`, il est introuvable et le jeu tombe a la premiere mort.
 - La gemme du rollcall est un `sprite_string` de `menuSpriteData.xml`, lue par
   `ArcherPortrait.InitGem`. Declaree en `sprite_int`, elle est introuvable de la.
+
+---
+
+## L'import
+
+`IMPORT ARCHER`, en tete de la liste, reprend un archer deja installe : le sien,
+exporte puis essaye en jeu, ou celui de quelqu'un d'autre.
+
+Rien n'est demande a son auteur, parce que tout ce qu'il faut est deja dans ce que
+le JEU exige de lui :
+
+| Fichier du mod | Ce qu'on y lit |
+|---|---|
+| `GameData/archerData.xml` | Ce qu'est un archer : son nom affiche, ses couleurs, et quels sprites sont son corps et son cadavre. |
+| `SpriteData/*.xml` | Comment ces planches se decoupent - taille d'une image, ancre - et quelle image joue quelle animation. |
+
+Trois choses valent d'etre dites, parce qu'aucune ne se devine :
+
+- **On part d'`archerData.xml`, pas des PNG.** Chercher des images sous
+  `sprites/player` retrouve les memes fichiers, mais sous le nom du sprite -
+  `GCBody` au lieu de `GreenClone` - et sans savoir lequel des huit fichiers du
+  repertoire est le personnage. Tout element dont le nom finit par `Archer` en est
+  un : `Archer`, `AltArcher` pour le costume, `SecretArcher` pour celui qu'on
+  debloque.
+- **Les poses se retrouvent par le NOM des animations, pas par le rang des
+  images.** Les rangs ne sont pas les memes partout : chez les archers du jeu
+  l'image 3 est le rebord, chez ceux que la forge exporte c'est la troisieme image
+  de course. Le nom, lui, est le meme des deux cotes - c'est le jeu qui le cherche.
+- **Une planche est une grille, pas une bande.** L'archer vert range ses huit
+  images de glissade sur sa troisieme rangee ; les chercher sur une seule ligne en
+  perdrait les trois quarts.
+
+L'ancre lue devient la fenetre du dessin, et chaque planche qui n'a pas la meme
+recoit le decalage qui l'y ramene. C'est ce qui permet de reprendre un archer de
+20x20 comme un de 24x24 sans rien recaler a la main.
+
+L'import **copie** : les poses entrent dans le vivier, le dessin les designe, et le
+mod d'origine n'est pas touche. Le desinstaller ne casse pas ce qui a ete importe.
+
+### La tete, qui n'est pas une planche comme les autres
+
+Le jeu la pose lui-meme sur le corps, et il **ecrase l'origine de son sprite** a
+chaque image :
+
+```
+Origin.Y = headYOrigins[image du corps]        // toujours, sans borne
+Origin.X = headXOrigins[image du corps]        // seulement si le tableau est assez long
+```
+
+L'import reprend cette regle telle quelle. La tete entre dans les emplacements
+cadres comme le corps, calee sur la pose DEBOUT ; les ecarts des autres poses -
+chez l'archer vert 19 debout, 20 sur la premiere image de course, 15 accroupi -
+sont releves et redeclares dans notre propre `HeadYOrigins`. La tete suit donc le
+corps au lieu de rester rigide : sans eux, un personnage accroupi garderait la tete
+quatre pixels trop haut.
+
+`SlideHead` est repris du mod plutot que devine : les archers du jeu repondent non,
+leurs images de glissade portant deja la tete, et en poser une seconde par-dessus en
+ferait deux.
+
+Un archer qui porte sa tete dans son corps - tout ce que la forge exporte - a une
+planche de tete **entierement transparente** : `BronesNoHat.png` fait 50x10 et ne
+contient pas un pixel opaque, quand celle de l'archer vert en contient 975. Une
+image vide n'etant jamais importee, ce cas se resout tout seul.
+
+Ce qui n'est pas repris : tout ce qui se deduit a la fabrication - variantes
+d'equipe, silhouette, portraits, statue - et la meche arriere (`headBackSprite`),
+que peu d'archers ont et pour laquelle la forge n'a pas d'emplacement.
+
+Verifie hors du jeu sur les sept archers installes - Madeline, Badeline,
+MadelineButPink, Brones, Brodread, GreenClone, GreenCloneAlt : chaque pose revient
+identique au pixel pres, ancre sur ancre. Seul `run3` manque a GreenClone, et il
+manque vraiment - son animation de course ne cite que deux images.
+
+La tete est verifiee de la meme facon, en comparant ce que la forge assemble a ce que
+le jeu dessine avec ses propres tableaux : **les neuf poses de GreenClone sont
+identiques au pixel pres**, glissade et accroupi compris.
 
 ---
 

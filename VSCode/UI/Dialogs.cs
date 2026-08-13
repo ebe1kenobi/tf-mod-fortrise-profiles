@@ -3,7 +3,7 @@ using FortRise;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   internal static class Dialogs
   {
@@ -32,7 +32,7 @@ namespace TFModFortRiseProfiles
 
       void Restore()
       {
-        menu.CanAct = true;
+        Reactivate(menu);
 
         // La ligne a pu disparaitre entre-temps : c'est precisement le cas quand la
         // reponse etait oui et qu'elle portait sur sa propre suppression.
@@ -56,6 +56,29 @@ namespace TFModFortRiseProfiles
       menu.Add(modal);
     }
 
+    /// <summary>
+    /// Rend la main au menu, mais pas avant l'image suivante.
+    ///
+    /// C'est la seule facon de fermer une modale par le bouton retour sans quitter
+    /// l'ecran du meme coup. UIModal appelle son rappel de retour depuis son Update,
+    /// donc pendant le base.Update() de MainMenu ; or MainMenu lit MenuInput.Back a
+    /// son tour juste apres, dans la MEME image, et rien ne consomme la pression.
+    /// Relever CanAct sur-le-champ, c'est lui rendre un bouton retour deja enfonce -
+    /// on refermait la question ET on remontait d'un ecran.
+    ///
+    /// Un cran d'attente suffit : Back est un "vient d'etre presse", il est retombe
+    /// a l'image suivante.
+    /// </summary>
+    public static void Reactivate(MainMenu menu)
+    {
+      if (menu == null)
+      {
+        return;
+      }
+
+      menu.Add(new NextFrame(() => menu.CanAct = true));
+    }
+
     private static MenuItem SelectedItem(MainMenu menu)
     {
       if (!menu.Layers.TryGetValue(-1, out Layer layer) || layer == null)
@@ -72,6 +95,31 @@ namespace TFModFortRiseProfiles
       }
 
       return null;
+    }
+
+    /// <summary>
+    /// Une action a jouer a la prochaine image, puis a oublier.
+    ///
+    /// Une entite plutot qu'une alarme : Alarm s'accroche a une entite deja presente,
+    /// et celle qu'on aurait sous la main ici est justement la modale qu'on est en
+    /// train de retirer.
+    /// </summary>
+    private sealed class NextFrame : Entity
+    {
+      private readonly Action action;
+
+      public NextFrame(Action action) : base(0)
+      {
+        this.action = action;
+        Depth = -100000;
+      }
+
+      public override void Update()
+      {
+        base.Update();
+        action();
+        RemoveSelf();
+      }
     }
   }
 }

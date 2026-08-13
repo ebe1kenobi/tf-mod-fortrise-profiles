@@ -1,13 +1,19 @@
-﻿{
-	"name": "Ebe1.Profiles",
-	"version": "1.22.2",
+{
+	"name": "Archer",
+	"version": "1.23.0",
 	"author": "ebe1.kenobi",
-	"description": "Player profiles: name, favourite archer and costume",
-	"dll": "TFModFortRiseProfiles.dll",
+	"description": "Archer profiles: name, favourite archer, costume, colors, sounds and powers",
+	"dll": "TFModFortRiseArcher.dll",
 	"dependencies": [
 		{
 			"name": "FortRise",
 			"version": "5.3.3"
+		}
+	],
+	"optionalDependencies": [
+		{
+			"name": "Power",
+			"version": "1.0.0"
 		}
 	]
 }

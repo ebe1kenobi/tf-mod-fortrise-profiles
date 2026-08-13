@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Lecture et ecriture de la liste des profils.
@@ -38,7 +38,7 @@ namespace TFModFortRiseProfiles
     {
       get
       {
-        var module = TFModFortRiseProfilesModule.Instance;
+        var module = TFModFortRiseArcherModule.Instance;
         return Path.Combine(module.Context.Storage.StoragePath, $"{module.Meta.Name}.profiles.json");
       }
     }

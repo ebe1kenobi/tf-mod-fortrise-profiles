@@ -1,7 +1,7 @@
 using System;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Traduit dans les deux sens entre un <see cref="ProfileData"/> et les donnees

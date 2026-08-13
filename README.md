@@ -1,6 +1,16 @@
-# Ebe1.Profiles
+# Archer
 
 Profils de joueur pour TowerFall, sous FortRise 5.
+
+> **Le mod s'appelait `Ebe1.Profiles`.** Il s'appelle desormais `Archer`, du nom de ce
+> qu'il configure. Au premier lancement, il **reprend tout seul** les donnees de
+> `Saves/Ebe1.Profiles` vers `Saves/Archer` : profils, images, sons, essais de
+> couleurs et archers forges. Les anciens fichiers sont copies, pas deplaces - ils
+> restent intacts a leur place, au cas ou.
+>
+> Les mods qui l'interrogent le demandent maintenant par `"Archer"` : `Power`,
+> `Poto`, `Tournament`, `WinCounters` et `LoaderAI` sont deja bascules et doivent etre
+> redeployes en meme temps.
 
 Chaque joueur se cree un profil : un nom, un archer, des sons, des portraits, des
 couleurs de sprite et son propre mappage de touches. Au debut d'une partie, chacun
@@ -9,7 +19,7 @@ choisit son profil sur l'ecran de selection des archers, et tout le reste suit.
 Un archer recolore emmene sa couleur partout : son nom, ses fleches, son bouclier et
 toutes ses particules la reprennent.
 
-Une lame `PROFILES` s'ajoute au menu principal, entre `MODS` et `OPTIONS`.
+Une lame `ARCHER` s'ajoute au menu principal, entre `MODS` et `OPTIONS`.
 
 ## Sommaire
 
@@ -20,7 +30,9 @@ Une lame `PROFILES` s'ajoute au menu principal, entre `MODS` et `OPTIONS`.
 - [Couleurs du sprite](#couleurs-du-sprite)
 - [Archer Forge](#archer-forge)
 - [Touches](#touches)
+- [Naviguer dans les ecrans](#naviguer-dans-les-ecrans)
 - [Plusieurs joueurs sur le meme archer](#plusieurs-joueurs-sur-le-meme-archer)
+- [Extraire les archers du jeu](#extraire-les-archers-du-jeu)
 - [Ou vivent les donnees](#ou-vivent-les-donnees)
 - [API pour les autres mods](#api-pour-les-autres-mods)
 - [Construire et deployer](#construire-et-deployer)
@@ -45,7 +57,7 @@ retrouve les profils du tour precedent.
 
 ## La fiche d'un profil
 
-La liste des profils s'ouvre depuis la lame `PROFILES`. `+ NEW PROFILE` demande un
+La liste des profils s'ouvre depuis la lame `ARCHER`. `+ NEW PROFILE` demande un
 nom au clavier virtuel ; `Alt` sur une ligne supprime le profil.
 
 | Ligne | Ce qu'elle fait |
@@ -53,6 +65,9 @@ nom au clavier virtuel ; `Alt` sur une ligne supprime le profil.
 | `NAME` | Renomme au clavier virtuel. Le dossier de donnees suit le renommage. |
 | `ARCHER` | Archer prefere, aux fleches. |
 | `COSTUME` | Tenue normale ou alternative. Grisee si l'archer n'a pas d'alternative. |
+| `POWER LB` | Pouvoir de la gachette gauche, aux fleches. **N'apparait que si le mod Power est installe.** |
+| `POWER RB` | Pouvoir de la gachette droite, meme regle. |
+| `VICTORY MUSIC` | Musique de fin de manche quand ce profil gagne. Les fleches font defiler les pistes du jeu, Confirmer ouvre la liste des fichiers deposes. |
 | `SOUNDS` | Sons par evenement. |
 | `IMAGES` | Portraits personnels. |
 | `COLORS` | Essais de recoloration du sprite. |
@@ -68,13 +83,42 @@ il la rend visible.
 Frappe directe au clavier physique, disposition et Shift compris. A la manette :
 Confirmer pose la lettre surlignee, Alt efface, Start valide, Retour annule.
 
+### Les deux pouvoirs
+
+Les lignes `POWER LB` et `POWER RB` n'existent que lorsque le mod **Power** est
+installe : c'est lui qui tient la liste des pouvoirs, Archer ne fait qu'enregistrer
+lesquels ont ete choisis.
+
+**Deux emplacements, un par gachette du haut.** Le mod Power y met ce qu'on veut, y
+compris le **vol**, qui est un pouvoir comme un autre : le prendre, c'est renoncer a
+un tir. Les deux rubriques proposent la meme liste.
+
+`DEFAULT` laisse decider le reglage `Default power 1` ou `Default power 2` du mod
+Power, et ce n'est pas la meme chose qu'aucun pouvoir - pour ca il y a l'entree
+`NONE`. `DEFAULT` est la premiere entree du cycle, donc on y revient toujours sans
+avoir a supprimer le profil.
+
+Un pouvoir est enregistre par son **identifiant** et non par son rang : un profil garde
+son choix meme si Power en ajoute ou en retire entre-temps. Un identifiant devenu
+inconnu s'affiche tel quel et se comporte comme `DEFAULT`.
+
+La dependance est **optionnelle des deux cotes** : sans Power, les lignes
+disparaissent et rien d'autre ne change ; sans Archer, Power donne ses pouvoirs par
+defaut a tout le monde. Aucun des deux mods ne reference l'autre a la compilation.
+
+Le second pouvoir passe par une interface a part, `IProfilesPower2Api` : l'interop
+construit son proxy sur la **forme** des membres, donc un mod Power plus ancien qui ne
+connait que `GetPlayerPower` continue de fonctionner. Ajouter le membre a l'interface
+existante aurait fait echouer tout le proxy chez lui, et il aurait perdu le premier
+pouvoir en meme temps que le second.
+
 ## Sons
 
 Les WAV vivent dans un **vivier commun** ; les affecter a un profil en copie le
 fichier dans son dossier, qui devient ainsi autonome.
 
 ```
-Saves/Ebe1.Profiles/wav/*.wav        vos fichiers
+Saves/Archer/wav/*.wav        vos fichiers
 ModFile/Content/wav/*.wav            ceux livres avec le mod, marques MOD
 ```
 
@@ -112,7 +156,7 @@ Le costume du profil decide de la variante appliquee. L'apercu suit la ligne
 survolee et affiche les dimensions du fichier. `Alt` retire l'image.
 
 ```
-Saves/Ebe1.Profiles/images/*.png     vos fichiers
+Saves/Archer/images/*.png     vos fichiers
 ModFile/Content/images/*.png         ceux livres avec le mod
 ```
 
@@ -137,7 +181,7 @@ est une tentative nommee : on en garde plusieurs, on compare, on choisit.
 Les essais sont ranges par archer et par costume. Changer d'archer ne perd donc
 rien : ceux de l'ancien restent en place et ressortent quand on y revient.
 
-L'export ecrit un JSON dans `Saves/Ebe1.Profiles/trials/`, lisible et modifiable a la
+L'export ecrit un JSON dans `Saves/Archer/trials/`, lisible et modifiable a la
 main. Un essai fait pour un autre archer s'importe quand meme, il n'apparaitra que
 lorsque le profil sera sur cet archer-la.
 
@@ -239,15 +283,29 @@ s'exporte comme un mod autonome.
 
 ### Le vivier
 
-Les images viennent d'un dossier decoupe par `script/slice_sheets.py` : un
-repertoire par planche, une image par case, un `index.json` decrivant la grille.
-La forge le lit dans `Saves/Ebe1.Profiles/sprites`, ou a l'endroit qu'indique un
-fichier `sprites.path` — trente mille fichiers ne se recopient pas a chaque essai.
+**Un repertoire par planche, un PNG par pose, et rien d'autre.** Pas d'index, pas de
+grille, aucun format propre a la forge : ce qui se regarde dans un explorateur de
+fichiers se debogue sans lancer le jeu, et une image ajoutee ou remplacee a la main
+est vue telle quelle.
 
-Seules les planches en cases de 32x32 sont proposees. Toute la geometrie de la forge
-- fenetre de decoupe, image de sortie de 24 - a ete relevee sur cette taille :
-appliquee a une case de 64, la meme fenetre preleve un coin de la creature au lieu
-de la creature. L'ecran indique combien de planches sont masquees.
+La forge lit `Saves/Archer/sprites`, ou l'endroit qu'indique un fichier
+`sprites.path` — trente mille fichiers ne se recopient pas a chaque essai.
+`script/slice_sheets.py` remplit ce dossier, mais n'importe quel PNG depose a la main
+fait l'affaire. `script/slice_sheets.ps1` fait exactement la meme chose **sans
+Python** : memes reglages, memes noms de fichiers, et environ deux fois et demie plus
+rapide. Le pixel y est confie a une classe C# compilee a la volee - quatre millions
+de pixels relus a chaque test de grille, PowerShell pur y mettrait des minutes. Rien
+a installer : System.Drawing est livre avec Windows.
+
+Les fichiers dont le nom commence par un **souligne** sont ignores : c'est ce qui
+ecarte la planche de contact (`_contact.png`) sans l'empecher d'exister.
+
+Toute taille d'image est acceptee. Celles qui depassent la fenetre de decoupe sont
+**reduites** a l'entree, en conservant leur proportion et au plus proche voisin ; les
+plus petites sont laissees telles quelles, car les agrandir doublerait leurs pixels.
+
+Le vivier est relu **a chaque entree dans la forge** : un decoupage relance pendant
+que le jeu tourne est vu sans redemarrer.
 
 ### Composer un archer
 
@@ -293,16 +351,27 @@ A l'essai, le parent doit etre enregistre en premier — il prete son emplacemen
 ### Voix
 
 `VOICE` donne une voix de repli parmi celles du jeu, puis vingt-et-une actions —
-`TIR`, `SAUT`, `MORT`, `GLISSADE`... — que l'on peut remplacer une par une avec un
-WAV de la banque des sons. La ligne survolee joue son fichier.
+`FIRE ARROW`, `JUMP`, `DIE`, `WALLSLIDE LOOP`... — que l'on peut remplacer une par
+une avec un WAV de la banque des sons. La ligne survolee joue son fichier.
+
+Les libelles sont **derives des cles d'evenement**, donc identiques a ceux de l'ecran
+`SOUNDS` d'un profil pour tout ce que les deux partagent. Deux libelles a tenir en
+accord finissent toujours par diverger, et le fichier exporte porte de toute facon le
+nom de la cle.
 
 Le repli agit **action par action** : poser un son sur `MORT` ne rend pas l'archer
 muet pour les vingt autres. Un archer sans aucun fichier a deja une voix complete.
 
 ### Musique de victoire
 
-`VICTORY MUSIC` propose `AUTO`, les treize pistes du jeu, puis les fichiers deposes
-dans `Saves/Ebe1.Profiles/music` (WAV ou OGG).
+`VICTORY MUSIC` propose `AUTO` et les treize pistes du jeu **aux fleches** ;
+**Confirmer** ouvre la liste des fichiers deposes. Deux gestes et non un seul cycle :
+les treize pistes se connaissent par coeur et se prennent au vol, alors qu'un fichier
+se cherche dans une liste - il y en a autant qu'on en depose.
+
+Les fichiers sont lus dans `Saves/Archer/music` **et** dans `Saves/Archer/wav` (WAV ou
+OGG). Un jingle de victoire est un WAV comme un autre, et obliger a le recopier dans
+un second dossier ne servirait qu'a expliquer pourquoi il y a deux dossiers.
 
 `AUTO` fait suivre la voix de repli. Ce n'est pas de la coquetterie : le jeu lit ce
 champ comme une cle de dictionnaire **sans la verifier**, et un archer sans musique
@@ -340,6 +409,30 @@ Le profil recoit toujours une **copie** de la configuration : l'ecran Options du
 ne peut donc pas ecrire dedans par megarde, et la configuration globale n'est jamais
 alteree.
 
+Les deux ecrans montrent `DASH LEFT`, `DASH RIGHT`, `POWER LEFT` et `POWER RIGHT` -
+quatre touches pour deux roles. Le jeu n'a QU'UNE action d'esquive : les deux dash y
+sont reversees ensemble, et les deux touches de pouvoir sont lues par le mod Power,
+qui ne connait rien d'elles autrement.
+
+**`ALT DODGE` n'y figure pas**, et c'est voulu : `XGamepadInput` verse cette touche
+dans `DodgeCheck` a cote de `Dodge`, c'est donc une troisieme touche d'esquive, en
+doublon des deux ci-dessus. Elle sert encore a naviguer dans les menus et garde pour
+cela la valeur du jeu - on l'a retiree du reglage, pas de la configuration.
+
+## Naviguer dans les ecrans
+
+Le bouton retour ramene **d'ou l'on vient**, et sur **la ligne qu'on avait quittee**.
+Les deux tiennent a une pile de navigation (`Core/MenuNav.cs`) plutot qu'a un ecran
+parent ecrit en dur dans chaque `Create()`.
+
+La difference se voit des qu'un ecran a deux portes d'entree : les reglages
+d'ensemble s'ouvrent depuis les deux editeurs de couleur, le choix d'image depuis les
+poses comme depuis les calques. Une valeur en dur y est juste une fois sur deux.
+
+La pile depile TOUT ce qui se trouve au-dessus de l'ecran d'arrivee, ce qui rattrape
+aussi les sorties de secours - un ecran dont la fiche a disparu se renvoie a la liste,
+trois crans plus haut, sans avoir a le declarer.
+
 ## Plusieurs joueurs sur le meme archer
 
 Le jeu l'interdit, pour que deux personnages identiques ne soient pas confondus. La
@@ -348,11 +441,31 @@ recoloration rendant cette raison caduque, le mod leve la restriction.
 Deux joueurs sur le meme archer **sans** profil recolore resteront indiscernables :
 la restriction avait sa raison d'etre.
 
+## Extraire les archers du jeu
+
+`script/extract-vanilla-archers.ps1` ecrit un mod par personnage du jeu, images,
+SpriteData et `archerData.xml` compris : une base de travail, pas une copie a jouer.
+
+Les **sons sont copies**, pas references. Les archers du jeu ne declarent pas leur
+voix : `<SFX>` y porte un ENTIER, l'index d'un jeu de sons que le jeu tient en dur, et
+un mod qui reprend cet entier ne recopie rien - il pointe vers le jeu. Le script
+resout l'index (l'ordre des prefixes `CHAR_A`..`CHAR_I` n'est PAS celui des archers),
+copie les vingt-trois WAV dans `Content/SFX/<archer>/` et remplace l'entier par
+`Content/SFX/<archer>/{action}.wav`.
+
+Les costumes ALT ont leur propre jeu, **complete par celui de base** la ou il manque -
+exactement ce que fait le jeu. Sans ce report, un costume ALT extrait n'aurait que
+cinq sons sur vingt-trois.
+
+La **musique de victoire reste une reference**, et c'est la seule limite : les pistes
+du jeu sont enfermees dans `MusicWaveBank.xwb`, une banque XACT compressee. Il n'y a
+pas de fichier a copier. Les sons, eux, sont des WAV poses dans `Content/SFX`.
+
 ## Ou vivent les donnees
 
 ```
-Saves/Ebe1.Profiles/
-  Ebe1.Profiles.profiles.json          les profils
+Saves/Archer/
+  Archer.profiles.json                  les profils
   wav/                                  vivier de sons
   images/                               vivier d'images
   trials/                               essais exportes
@@ -371,7 +484,7 @@ qui ajoute ou retire des archers decale les index, les profils y survivent.
 ## API pour les autres mods
 
 ```csharp
-context.Interop.GetApi<IProfilesModApi>("Ebe1.Profiles");
+context.Interop.GetApi<IProfilesModApi>("Archer");
 ```
 
 | Membre | |
@@ -381,17 +494,29 @@ context.Interop.GetApi<IProfilesModApi>("Ebe1.Profiles");
 | `SetPlayerName(int, string)` | Impose un nom. Le choix d'un profil reprend la main dessus. |
 | `GetProfileName(int)` | Nom du profil rattache, ou vide. |
 
+Les pouvoirs vivent dans **deux interfaces separees**, a demander chacune de son cote :
+
+| Interface | Membre | |
+|---|---|---|
+| `IProfilesPowerApi` | `GetPlayerPower(int)` | Pouvoir de la gachette gauche, ou vide. |
+| `IProfilesPower2Api` | `GetPlayerPower2(int)` | Pouvoir de la gachette droite, ou vide. |
+
+Une interface par ajout, et jamais un membre de plus sur une interface deja publiee :
+le proxy de l'interop est construit sur la **forme** des membres, donc un appelant qui
+declare un membre absent de la version installee n'obtient plus rien du tout - pas
+meme les membres qui existent.
+
 `GetPlayerName` et `SetPlayerName` reprennent les signatures de l'ancien
 `ICustomNameModApi` : un mod qui lisait les noms via CustomName n'a que le nom du mod
 a changer.
 
-`LoaderAI`, `Poto`, `Tournament` et `WinCounters` sont deja bascules. CustomName se
-retire de l'ecran de selection quand Profiles est actif.
+`LoaderAI`, `Poto`, `Power`, `Tournament` et `WinCounters` sont deja bascules sur le
+nom `Archer`. CustomName se retire de l'ecran de selection quand ce mod est actif.
 
 ## Construire et deployer
 
 ```
-dotnet build VSCode/TFModFortRiseProfiles.csproj
+dotnet build VSCode/TFModFortRiseArcher.csproj
 ```
 
 La tache MSBuild de `FortRise.Configuration` publie sous le nom du projet ; les

@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Aide au maintien d'un panneau a une place fixe pendant que la liste defile.

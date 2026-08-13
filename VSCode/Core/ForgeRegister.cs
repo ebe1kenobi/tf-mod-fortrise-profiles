@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using FortRise;
@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Enregistre un archer forge dans le jeu en cours, sans redemarrage.
@@ -62,31 +62,28 @@ namespace TFModFortRiseProfiles
     {
       if (design == null)
       {
-        return "AUCUN ARCHER";
+        return "NO ARCHER";
       }
 
       if (!design.Buildable)
       {
-        return "IL MANQUE LE NOM OU LA POSE DEBOUT";
+        return "NAME OR STAND POSE MISSING";
       }
 
-      if (registered.ContainsKey(design.Id))
-      {
-        // Rien a faire d'utile : FortRise ne sait pas retirer un archer, et lui en
-        // donner un second sous le meme nom laisserait deux entrees dont une morte.
-        return "DEJA ESSAYE, REDEMARRER POUR LE REFAIRE";
-      }
+      // Deja essaye : on refait ses planches et on les remet a la place des
+      // anciennes, sans lui donner un second emplacement d'archer. Voir Apply.
+      registered.TryGetValue(design.Id, out IArcherEntry existing);
 
       ForgeArt art = ForgeBuild.Build(design);
 
       if (art == null)
       {
-        return "ASSEMBLAGE IMPOSSIBLE";
+        return "BUILD FAILED";
       }
 
       try
       {
-        IModRegistry registry = TFModFortRiseProfilesModule.Instance.Context.Registry;
+        IModRegistry registry = TFModFortRiseArcherModule.Instance.Context.Registry;
         generation++;
 
         string prefix = $"forge/{design.Name}/{generation}/";
@@ -103,7 +100,17 @@ namespace TFModFortRiseProfiles
         ISubtextureEntry corpseBlue = Texture(registry, prefix + "corpse_blue", art.CorpseBlue);
         ISubtextureEntry corpseFlash = Texture(registry, prefix + "corpse_flash", art.CorpseFlash);
 
-        ISubtextureEntry head = Texture(registry, prefix + "head", art.Head);
+        ISubtextureEntry headNoHat = Texture(registry, prefix + "head_nohat", art.HeadNoHat);
+        ISubtextureEntry headNoHatRed = Texture(registry, prefix + "head_nohat_red", art.HeadNoHatRed);
+        ISubtextureEntry headNoHatBlue = Texture(registry, prefix + "head_nohat_blue", art.HeadNoHatBlue);
+
+        ISubtextureEntry headNormal = Texture(registry, prefix + "head_normal", art.HeadNormal);
+        ISubtextureEntry headNormalRed = Texture(registry, prefix + "head_normal_red", art.HeadNormalRed);
+        ISubtextureEntry headNormalBlue = Texture(registry, prefix + "head_normal_blue", art.HeadNormalBlue);
+
+        ISubtextureEntry headCrown = Texture(registry, prefix + "head_crown", art.HeadCrown);
+        ISubtextureEntry headCrownRed = Texture(registry, prefix + "head_crown_red", art.HeadCrownRed);
+        ISubtextureEntry headCrownBlue = Texture(registry, prefix + "head_crown_blue", art.HeadCrownBlue);
         ISubtextureEntry bow = Texture(registry, prefix + "bow", art.Bow);
         ISubtextureEntry bowRed = Texture(registry, prefix + "bow_red", art.BowRed);
         ISubtextureEntry bowBlue = Texture(registry, prefix + "bow_blue", art.BowBlue);
@@ -117,16 +124,24 @@ namespace TFModFortRiseProfiles
         // --- sprites ---
 
         ISpriteContainerEntry bodySprite = registry.Sprites.RegisterSprite(
-            name, BodyConfig(body, bodyRed, bodyBlue, art.HasHead));
+            name, BodyConfig(design, body, bodyRed, bodyBlue, art.HasHead, art.Frame));
 
-        ISpriteContainerEntry headSprite = registry.Sprites.RegisterSprite(
-            name + "Head", HeadConfig(head));
+        // Trois planches et non une : le jeu choisit celle qu'il montre selon le
+        // couvre-chef, et c'est ainsi qu'un chapeau s'envole sans emmener la tete.
+        ISpriteContainerEntry headNoHatSprite = registry.Sprites.RegisterSprite(
+            name + "HeadNoHat", HeadConfig(headNoHat, headNoHatRed, headNoHatBlue, art.Frame));
+
+        ISpriteContainerEntry headNormalSprite = registry.Sprites.RegisterSprite(
+            name + "HeadNormal", HeadConfig(headNormal, headNormalRed, headNormalBlue, art.Frame));
+
+        ISpriteContainerEntry headCrownSprite = registry.Sprites.RegisterSprite(
+            name + "HeadCrown", HeadConfig(headCrown, headCrownRed, headCrownBlue, art.Frame));
 
         ISpriteContainerEntry bowSprite = registry.Sprites.RegisterSprite(
             name + "Bow", BowConfig(bow, bowRed, bowBlue));
 
         ICorpseSpriteContainerEntry corpseSprite = registry.Sprites.RegisterCorpseSprite(
-            name + "Corpse", CorpseConfig(corpse, corpseRed, corpseBlue, corpseFlash));
+            name + "Corpse", CorpseConfig(corpse, corpseRed, corpseBlue, corpseFlash, art.Frame));
 
         ISpriteContainerEntry gemSprite = registry.Sprites.RegisterSprite(
             "Gem" + name, GemConfig(gem));
@@ -165,9 +180,9 @@ namespace TFModFortRiseProfiles
           Sprites = new SpriteInfo
           {
             Body = bodySprite,
-            HeadNormal = headSprite,
-            HeadNoHat = headSprite,
-            HeadCrown = headSprite,
+            HeadNormal = headNormalSprite,
+            HeadNoHat = headNoHatSprite,
+            HeadCrown = headCrownSprite,
             Bow = bowSprite
           },
           Portraits = new PortraitInfo
@@ -189,6 +204,19 @@ namespace TFModFortRiseProfiles
           }
         };
 
+        configuration = configuration with { SFX = Voice(registry, design, name) };
+
+        // Deuxieme essai et suivants : l'archer existe deja a son index, on ne fait
+        // que remplacer ce qu'il montre. Rien n'est ajoute nulle part, donc rien ne
+        // se decale - et on peut corriger une pose et reessayer sans redemarrer.
+        if (existing != null)
+        {
+          Apply(existing.ArcherData, configuration);
+          Substitutions(art, name);
+          Log.Info($"[Forge] {name} refait a l'index {existing.Index}");
+          return null;
+        }
+
         // Le costume ALT occupe l'emplacement de son parent : il faut donc que le
         // parent soit deja pose. On ne peut pas l'enregistrer a sa place - son propre
         // dessin peut etre incomplet - alors on le dit et on s'arrete.
@@ -209,8 +237,6 @@ namespace TFModFortRiseProfiles
           configuration = configuration with { AltFor = parentEntry };
         }
 
-        configuration = configuration with { SFX = Voice(registry, design, name) };
-
         IArcherEntry entry = registry.Archers.RegisterArcher(name, configuration);
         registered[design.Id] = entry;
 
@@ -222,26 +248,114 @@ namespace TFModFortRiseProfiles
         ForgeParticles.Extend();
         ForgeStats.Extend();
 
-        if (art.Substituted.Count > 0)
-        {
-          // Ces poses ont pris la pose debout faute d'image. L'archer marche, mais il
-          // ne saute pas et ne meurt pas comme il devrait : le dire ici evite de
-          // chercher un bug d'animation la ou il manque seulement un choix.
-          Log.Info($"[Forge] {name} : poses comblees par la pose debout - "
-                   + string.Join(", ", art.Substituted));
-        }
-
+        Substitutions(art, name);
         Log.Info($"[Forge] {name} enregistre a l'index {entry.Index}");
         return null;
       }
       catch (Exception e)
       {
         Log.Error($"[Forge] enregistrement de {design.Name} impossible : {e}");
-        return "ENREGISTREMENT IMPOSSIBLE";
+        return "REGISTER FAILED";
       }
     }
 
     // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Remet un archer deja pose a jour, sur place.
+    ///
+    /// C'est ce qui permet de corriger une pose et de reessayer sans redemarrer. On
+    /// ne peut pas l'enregistrer une seconde fois - FortRise ne sait pas retirer un
+    /// archer, et un second sous le meme nom laisserait deux entrees dont une morte -
+    /// mais on peut remplacer ce que la premiere montre.
+    ///
+    /// Les memes affectations que celles de <c>ModArchers.Invoke</c>, qui remplit
+    /// cette meme structure au premier essai : un sprite s'y designe par un
+    /// identifiant qui sera resolu a l'apparition du joueur, une image par l'objet
+    /// lui-meme. C'est ce qui rend le remplacement possible - rien n'est fige dans
+    /// l'archer, tout est relu quand on entre en partie.
+    ///
+    /// Ce qui a ete enregistre entre-temps - textures, sprites, sons - reste dans les
+    /// registres de FortRise. On ne peut pas les en retirer, et cela n'a pas grande
+    /// importance : ce sont quelques planches par essai, dans une session ou l'on
+    /// essaie justement.
+    /// </summary>
+    private static void Apply(ArcherData data, ArcherConfiguration configuration)
+    {
+      data.Name0 = configuration.TopName;
+      data.Name1 = configuration.BottomName;
+      data.ColorA = configuration.ColorA;
+      data.ColorB = configuration.ColorB;
+      data.LightbarColor = configuration.LightbarColor;
+      data.Aimer = configuration.Aimer.Subtexture;
+      data.Corpse = configuration.CorpseSprite.Entry.ID;
+      data.Gender = configuration.Gender;
+      data.StartNoHat = configuration.StartNoHat;
+      data.VictoryMusic = configuration.VictoryMusic;
+      data.SFXID = configuration.SFX;
+
+      // La structure est relue puis reecrite entiere : elle porte des champs que la
+      // forge ne remplit pas - la tete arriere - et les recreer de zero les
+      // effacerait.
+      ArcherData.SpriteInfo sprites = data.Sprites;
+      sprites.Body = configuration.Sprites.Body.Entry.ID;
+      sprites.HeadNormal = configuration.Sprites.HeadNormal.Entry.ID;
+      sprites.HeadNoHat = configuration.Sprites.HeadNoHat.Entry.ID;
+      sprites.HeadCrown = configuration.Sprites.HeadCrown.Entry.ID;
+      sprites.Bow = configuration.Sprites.Bow.Entry.ID;
+      data.Sprites = sprites;
+
+      ArcherData.PortraitInfo portraits = data.Portraits;
+      portraits.NotJoined = configuration.Portraits.NotJoined.Subtexture;
+      portraits.Joined = configuration.Portraits.Joined.Subtexture;
+      portraits.Win = configuration.Portraits.Win.Subtexture;
+      portraits.Lose = configuration.Portraits.Lose.Subtexture;
+      data.Portraits = portraits;
+
+      ArcherData.StatueInfo statue = data.Statue;
+      statue.Image = configuration.Statue.Image.Subtexture;
+      statue.Glow = configuration.Statue.Glow.Subtexture;
+      data.Statue = statue;
+
+      ArcherData.GemInfo gems = data.Gems;
+      gems.Gameplay = configuration.Gems.Gameplay.Entry.ID;
+      gems.Menu = configuration.Gems.Menu.Entry.ID;
+      data.Gems = gems;
+
+      ArcherData.HatInfo hat = data.Hat;
+
+      if (configuration.Hat.TryGetValue(out HatInfo chosen))
+      {
+        hat.Normal = chosen.Normal.Subtexture;
+        hat.Blue = chosen.Blue.Subtexture;
+        hat.Red = chosen.Red.Subtexture;
+      }
+      else
+      {
+        // Un chapeau retire doit disparaitre : le laisser en place donnerait un
+        // archer qui perd un chapeau qu'il ne porte plus.
+        hat.Normal = null;
+        hat.Blue = null;
+        hat.Red = null;
+      }
+
+      data.Hat = hat;
+    }
+
+    /// <summary>
+    /// Dit quelles poses ont pris la pose debout faute d'image.
+    ///
+    /// L'archer marche, mais il ne saute pas et ne meurt pas comme il devrait : le
+    /// dire evite de chercher un defaut d'animation la ou il manque un choix.
+    /// </summary>
+    private static void Substitutions(ForgeArt art, string name)
+    {
+      if (art.Substituted.Count > 0)
+      {
+        Log.Info($"[Forge] {name} : poses comblees par la pose debout - "
+                 + string.Join(", ", art.Substituted));
+      }
+    }
 
     /// <summary>
     /// Construit la voix de l'archer et rend son identifiant de son.
@@ -462,24 +576,26 @@ namespace TFModFortRiseProfiles
     }
 
     private static SpriteConfiguration<string> BodyConfig(
-        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, bool hasHead)
+        ForgeDesign design,
+        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, bool hasHead,
+        ForgeFrame frame)
     {
       return new SpriteConfiguration<string>
       {
         Texture = texture,
         RedTexture = red,
         BlueTexture = blue,
-        FrameWidth = ForgeSlots.Frame,
-        FrameHeight = ForgeSlots.Frame,
-        OriginX = 14,
-        OriginY = ForgeSlots.Frame,
+        FrameWidth = frame.Width,
+        FrameHeight = frame.Height,
+        OriginX = frame.OriginX,
+        OriginY = frame.OriginY,
         X = 0,
         Y = 8,
 
         // Obligatoire, et indexe sans borne par l'image courante du corps. Voir
         // ForgeSlots.HeadYOrigins : un tableau trop court fait tomber le jeu en plein
         // match, pas au chargement.
-        HeadYOrigins = ForgeSlots.HeadYOrigins(hasHead),
+        HeadYOrigins = ForgeSlots.HeadYOrigins(design, hasHead, frame.OriginY),
 
         // La tete est dessinee dans le corps : la masquer pendant la glissade
         // d'esquive evite d'en poser une seconde par-dessus. C'est ce que font les
@@ -487,8 +603,10 @@ namespace TFModFortRiseProfiles
         AdditionalData = new Dictionary<string, object>
         {
           // Masquer la tete pendant la glissade n'a de sens que si le corps la porte
-          // deja. Un dessin qui fournit sa propre tete la perdrait a chaque esquive.
-          { "SlideHead", hasHead ? "True" : "False" }
+          // deja. Un dessin qui fournit sa propre tete la perdrait a chaque esquive -
+          // sauf s'il vient d'un archer qui repond le contraire, ses images de
+          // glissade portant deja la tete. Voir ForgeDesign.SlideHead.
+          { "SlideHead", (design.SlideHead ?? hasHead) ? "True" : "False" }
         },
 
         Animations = new[]
@@ -501,9 +619,11 @@ namespace TFModFortRiseProfiles
           Anim("ledge", 4),
           Anim("dodge", 0.1f, false, 7),
           Anim("duck", 9),
+          // Trois images distinctes, et non trois fois la huitieme : la glissade est
+          // le seul moment ou le corps porte le couvre-chef, la tete etant cachee.
           Anim("slide_nohat", 8),
-          Anim("slide_normal", 8),
-          Anim("slide_crown", 8)
+          Anim("slide_normal", 10),
+          Anim("slide_crown", 11)
         }
       };
     }
@@ -523,17 +643,18 @@ namespace TFModFortRiseProfiles
     /// <c>headYOrigins[bodySprite.CurrentFrame]</c>. C'est donc ce tableau, et lui
     /// seul, qui decide de la hauteur de la tete - voir ForgeSlots.HeadYOrigins.
     /// </summary>
-    private static SpriteConfiguration<string> HeadConfig(ISubtextureEntry texture)
+    private static SpriteConfiguration<string> HeadConfig(
+        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, ForgeFrame frame)
     {
       return new SpriteConfiguration<string>
       {
         Texture = texture,
-        RedTexture = texture,
-        BlueTexture = texture,
-        FrameWidth = ForgeSlots.Frame,
-        FrameHeight = ForgeSlots.Frame,
-        OriginX = 14,
-        OriginY = ForgeSlots.Frame,
+        RedTexture = red,
+        BlueTexture = blue,
+        FrameWidth = frame.Width,
+        FrameHeight = frame.Height,
+        OriginX = frame.OriginX,
+        OriginY = frame.OriginY,
         X = 0,
         Y = 8,
         Animations = new[]
@@ -575,7 +696,8 @@ namespace TFModFortRiseProfiles
     }
 
     private static SpriteConfiguration<string> CorpseConfig(
-        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, ISubtextureEntry flash)
+        ISubtextureEntry texture, ISubtextureEntry red, ISubtextureEntry blue, ISubtextureEntry flash,
+        ForgeFrame frame)
     {
       return new SpriteConfiguration<string>
       {
@@ -583,8 +705,8 @@ namespace TFModFortRiseProfiles
         RedTeam = red,
         BlueTeam = blue,
         Flash = flash,
-        FrameWidth = ForgeSlots.Frame,
-        FrameHeight = ForgeSlots.Frame,
+        FrameWidth = frame.Width,
+        FrameHeight = frame.Height,
         Animations = new[]
         {
           Anim("ground", 0),

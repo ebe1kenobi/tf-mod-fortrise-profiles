@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// La fiche d'un archer forge : ses noms, sa source, ses poses, l'essai et l'export.
@@ -61,7 +61,7 @@ namespace TFModFortRiseProfiles
 
       if (design == null)
       {
-        Main.State = listState;
+        MenuNav.Switch(Main, listState);
         return;
       }
 
@@ -75,7 +75,7 @@ namespace TFModFortRiseProfiles
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIForgeEdit>());
-      Main.BackState = listState;
+      Main.BackState = MenuNav.Arrive(Main, listState);
       Main.TweenBGCameraToY(2);
 
       preview = new UIForgePreview(PreviewPosition);
@@ -111,8 +111,16 @@ namespace TFModFortRiseProfiles
       // remplir plutot que pour l'archer entier.
       UIMenuRow framesRow = MakeRow(rows.Count, "FRAMES");
       framesRow.RightText = FramesLabel;
-      framesRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeFrames>();
+      framesRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIForgeFrames>());
       rows.Add(framesRow);
+
+      // Juste apres les poses, et avant le reste : une image reprise ailleurs est
+      // souvent trop grande, et tout ce qui suit - fenetre, couleurs, essai - se
+      // juge sur un personnage a sa taille definitive.
+      UIMenuRow adjustRow = MakeRow(rows.Count, "SIZE / CROP");
+      adjustRow.RightText = AdjustLabel;
+      adjustRow.OnConfirmed = OpenAdjust;
+      rows.Add(adjustRow);
 
       // Les memes ecrans que les profils, sur un autre sujet. Poses juste apres les
       // poses : on recolore ce qu'on vient de composer, et une palette relevee sur un
@@ -147,7 +155,7 @@ namespace TFModFortRiseProfiles
 
       UIMenuRow voiceRow = MakeRow(rows.Count, "VOICE");
       voiceRow.RightText = VoiceLabel;
-      voiceRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeVoice>();
+      voiceRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIForgeVoice>());
       rows.Add(voiceRow);
 
       // Facultative aussi, mais jamais vide a l'arrivee : le cran AUTO la fait
@@ -157,6 +165,12 @@ namespace TFModFortRiseProfiles
       musicRow.RightText = () => ForgeMusic.Label(design);
       musicRow.OnLeft = () => CycleMusic(-1);
       musicRow.OnRight = () => CycleMusic(1);
+
+      // Valider ouvre la liste des fichiers ; les fleches font defiler les pistes du
+      // jeu. Les treize pistes se connaissent par coeur et se prennent au vol, alors
+      // qu'un fichier apporte se cherche dans une liste - il y en a autant qu'on en
+      // depose.
+      musicRow.OnConfirmed = PickMusicFile;
       rows.Add(musicRow);
 
       UIMenuRow hueRow = MakeRow(rows.Count, "BORROWED HUE");
@@ -240,7 +254,7 @@ namespace TFModFortRiseProfiles
       ColorEditing.Subject = new ForgeColorSubject(design);
       ColorEditing.BackState = ModRegisters.MenuState<UIForgeEdit>();
 
-      Main.State = ModRegisters.MenuState<UIProfileColorGroups>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIProfileColorGroups>());
     }
 
     /// <summary>Ce que porte la ligne COLORS : de quoi voir si quelque chose est regle.</summary>
@@ -308,7 +322,7 @@ namespace TFModFortRiseProfiles
     {
       if (ForgeStorage.AltOf(design) != null)
       {
-        Say("ALT", "IL A DEJA UN COSTUME ALT");
+        Say("ALT", "IT ALREADY HAS AN ALT COSTUME");
         return;
       }
 
@@ -316,7 +330,7 @@ namespace TFModFortRiseProfiles
 
       if (parents.Count == 0)
       {
-        Say("ALT", "AUCUN AUTRE ARCHER");
+        Say("ALT", "NO OTHER ARCHER");
         return;
       }
 
@@ -341,6 +355,22 @@ namespace TFModFortRiseProfiles
     private void CycleMusic(int direction)
     {
       design.VictoryMusic = ForgeMusic.Next(design.VictoryMusic, direction);
+    }
+
+    /// <summary>Ouvre la liste des fichiers de la banque pour cet archer.</summary>
+    private void PickMusicFile()
+    {
+      ForgeDesign captured = design;
+
+      MusicEditing.Subject = captured.Name;
+      MusicEditing.Get = () => captured.VictoryMusic;
+      MusicEditing.Set = value =>
+      {
+        captured.VictoryMusic = value;
+        ForgeStorage.Save();
+      };
+
+      MenuNav.Push(Main, ModRegisters.MenuState<UIMusicPicker>());
     }
 
     private string VoiceLabel()
@@ -403,9 +433,55 @@ namespace TFModFortRiseProfiles
           }));
     }
 
+    private void OpenAdjust()
+    {
+      // Portee : toutes les images. L'ecran sert aux deux, et c'est l'appelant qui
+      // dit laquelle - les calques l'ouvrent sur une seule.
+      UIForgeAdjust.EditingSlot = null;
+      MenuNav.Push(Main, ModRegisters.MenuState<UIForgeAdjust>());
+    }
+
+    /// <summary>
+    /// Ce que les reglages de taille font a l'archer, en deux mots.
+    ///
+    /// On compte les images retouchees plutot que d'afficher un facteur : sur seize
+    /// images il n'y en a pas forcement un seul, et "3 IMAGES" dit ce qu'un
+    /// pourcentage moyen cacherait.
+    /// </summary>
+    private string AdjustLabel()
+    {
+      int touched = 0;
+      int total = 0;
+
+      foreach (ForgeSlot slot in ForgeSlots.All)
+      {
+        foreach (ForgePick pick in design.LayersOf(slot.Key))
+        {
+          total++;
+
+          if (!pick.Untouched)
+          {
+            touched++;
+          }
+        }
+      }
+
+      if (touched == 0)
+      {
+        return "";
+      }
+
+      return touched == total ? "ALL" : touched + " IMAGES";
+    }
+
     private void TestInGame()
     {
       ForgeStorage.Save();
+
+      // Avant l'appel : c'est lui qui pose l'archer, et le mot a dire n'est pas le
+      // meme selon qu'on vient de le poser ou de le refaire.
+      bool again = ForgeRegister.IsRegistered(design);
+
       string failure = ForgeRegister.Register(design);
 
       if (failure != null)
@@ -415,7 +491,11 @@ namespace TFModFortRiseProfiles
         return;
       }
 
-      Say("TEST", "IN GAME");
+      // Un archer refait ne change d'aspect qu'a la prochaine apparition : le joueur
+      // deja en piste garde les planches avec lesquelles il est ne. Sortir de la
+      // partie et en relancer une suffit, et le dire evite de croire que rien n'a
+      // pris.
+      Say("TEST", again ? "REFAIT - RELANCER LA PARTIE" : "IN GAME");
     }
 
     private void Export()
@@ -439,7 +519,7 @@ namespace TFModFortRiseProfiles
     private void SaveAndClose()
     {
       ForgeStorage.Save();
-      Main.State = ModRegisters.MenuState<UIForgeList>();
+      MenuNav.Switch(Main, ModRegisters.MenuState<UIForgeList>());
     }
 
     /// <summary>

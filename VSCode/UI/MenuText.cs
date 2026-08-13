@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Retire d'un texte les caracteres que la police du jeu ne sait pas dessiner.

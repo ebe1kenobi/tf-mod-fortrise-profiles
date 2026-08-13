@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>Une couleur presente dans le sprite, et le nombre de pixels qu'elle occupe.</summary>
   public sealed class PaletteColor

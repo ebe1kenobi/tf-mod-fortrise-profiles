@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Un essai de couleurs : une tentative nommee, gardee a cote des autres.

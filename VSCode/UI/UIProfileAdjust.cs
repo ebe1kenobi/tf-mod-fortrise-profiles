@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Reglages d'ensemble de l'essai actif : saturation, teinte, luminosite, contraste.
@@ -43,12 +43,12 @@ namespace TFModFortRiseProfiles
 
       if (trial == null)
       {
-        Main.State = ColorEditing.BackState;
+        MenuNav.Switch(Main, ColorEditing.BackState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileAdjust>());
-      Main.BackState = ModRegisters.MenuState<UIProfileColorGroups>();
+      Main.BackState = MenuNav.Arrive(Main, ModRegisters.MenuState<UIProfileColorGroups>());
       Main.TweenBGCameraToY(2);
 
       preview = ColorPreview.For(subject, PreviewPosition);
@@ -97,7 +97,10 @@ namespace TFModFortRiseProfiles
 
       Main.Add(rows);
       Main.MaxUICameraY = 0f;
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()

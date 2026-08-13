@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Regroupe les planches du sprite en parties telles qu'on les designe quand on

@@ -1,22 +1,29 @@
-﻿using System;
+using System;
 using FortRise;
 using HarmonyLib;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Remplace les sons du jeu par ceux du profil, quand le profil en a.
   ///
   /// Le jeu ne joue pas ses effets par un point d'entree nomme : chaque action
-  /// appelle Play() sur l'objet SFX que porte son ArcherData. On encadre donc
-  /// l'action (Die, ShootArrow) pour retenir quel SFX elle s'apprete a jouer et pour
-  /// quel joueur, puis on intercepte SFX.Play : si l'instance qui se declenche est
-  /// bien celle qu'on attendait, on joue le son du profil et on annule l'original.
+  /// appelle Play() sur l'objet SFX que porte son ArcherData. Tout passe donc par un
+  /// seul interception, celle de SFX.Play - et l'evenement s'y reconnait de deux
+  /// facons.
   ///
-  /// C'est la methode du mod Customize. Passer par SFX.Play plutot que par un
-  /// remplacement de l'ArcherData evite de modifier des donnees partagees par tous
-  /// les joueurs qui ont choisi le meme archer.
+  /// A L'ARRIVEE, pour presque tout : l'instance jouee appartient a un champ precis
+  /// du CharacterSounds de l'archer, ce qui dit QUOI, et le panoramique - l'abscisse
+  /// de l'entite - dit QUI. Aucune methode du joueur n'a besoin d'etre patchee.
+  ///
+  /// PAR L'ACTION, pour les seules morts : le son ne dit pas qui a tue, et
+  /// KILLED_BY_&lt;PROFIL&gt; en depend. Le prefix de Die retient donc la victime, le
+  /// tueur et la cause, et SFX.Play s'en sert quand l'instance correspond.
+  ///
+  /// Passer par SFX.Play plutot que par un remplacement de l'ArcherData evite de
+  /// modifier des donnees partagees par tous les joueurs qui ont choisi le meme
+  /// archer.
   /// </summary>
   public class MyProfileSfx : IHookable
   {
@@ -46,12 +53,6 @@ namespace TFModFortRiseProfiles
       );
 
       harmony.Patch(
-          AccessTools.DeclaredMethod(typeof(Player), "ShootArrow"),
-          prefix: new HarmonyMethod(ShootArrow_prefix),
-          postfix: new HarmonyMethod(Action_postfix)
-      );
-
-      harmony.Patch(
           AccessTools.DeclaredMethod(typeof(Player), nameof(Player.Die), [
                                                              typeof(DeathCause),
                                                              typeof(int),
@@ -61,27 +62,6 @@ namespace TFModFortRiseProfiles
           prefix: new HarmonyMethod(Die_prefix),
           postfix: new HarmonyMethod(Action_postfix)
       );
-    }
-
-    private static void ShootArrow_prefix(Player __instance)
-    {
-      try
-      {
-        ProfileData profile = ProfileAssignment.Get(__instance.PlayerIndex);
-        if (profile == null)
-        {
-          return;
-        }
-
-        Pending.Vanilla = __instance.ArcherData.SFX.FireArrow;
-        Pending.Profile = profile;
-        Pending.Event = SoundEvents.FireArrow;
-      }
-      catch (Exception e)
-      {
-        Log.Error($"[Sfx] tir : {e.Message}");
-        Pending.Clear();
-      }
     }
 
     private static void Die_prefix(Player __instance, DeathCause deathCause, int killerIndex, bool brambled, bool laser)
@@ -130,18 +110,94 @@ namespace TFModFortRiseProfiles
     {
       try
       {
-        if (Pending.Vanilla == null || Pending.Profile == null || !ReferenceEquals(__instance, Pending.Vanilla))
+        // Action encadree : la mort et le tir. Le prefix de l'action sait dire QUEL
+        // joueur agit, ce que le seul son ne dirait pas - et c'est ce qu'il faut pour
+        // KILLED_BY_<PROFIL>, qui depend du tueur.
+        if (Pending.Vanilla != null && Pending.Profile != null && ReferenceEquals(__instance, Pending.Vanilla))
         {
-          return true;
+          return !ProfileSfx.TryPlay(Pending.Profile, Pending.Event, volume);
         }
 
-        return !ProfileSfx.TryPlay(Pending.Profile, Pending.Event, volume);
+        // Tous les autres sons de l'archer. Ils partent d'endroits disperses - le
+        // setter Aiming, EnterDucking, le saut, l'atterrissage au milieu de
+        // NormalUpdate, la collecte de fleches - dont plusieurs sont prives ou trop
+        // courts pour etre patches un a un. On les reconnait donc a l'ARRIVEE.
+        return !FromArcherSound(__instance, panX, volume);
       }
       catch (Exception e)
       {
         Log.Error($"[Sfx] lecture : {e.Message}");
         return true;
       }
+    }
+
+    /// <summary>
+    /// Les sons que porte le CharacterSounds d'un archer, et l'evenement de profil
+    /// qui leur correspond.
+    ///
+    /// Les MORTS n'y figurent pas, et c'est le seul cas ou la reconnaissance a
+    /// l'arrivee ne suffirait pas : elle saurait dire de quelle mort il s'agit - le
+    /// jeu a une instance distincte par cause - mais pas QUI a tue, et c'est ce qu'il
+    /// faut pour KILLED_BY_&lt;PROFIL&gt;. Le tueur ne se lit que dans les arguments
+    /// de Die, donc les morts gardent leur action encadree.
+    /// </summary>
+    private static readonly (string Event, Func<CharacterSounds, Monocle.SFX> Sound)[] Watched =
+    {
+      (SoundEvents.FireArrow, s => s.FireArrow),
+      (SoundEvents.Jump, s => s.Jump),
+      (SoundEvents.Land, s => s.Land),
+      (SoundEvents.Duck, s => s.Duck),
+      (SoundEvents.Aim, s => s.Aim),
+      (SoundEvents.AimCancel, s => s.AimCancel),
+      (SoundEvents.Grab, s => s.Grab),
+      (SoundEvents.ArrowGrab, s => s.ArrowGrab),
+      (SoundEvents.ArrowRecover, s => s.ArrowRecover),
+      (SoundEvents.NoFire, s => s.NoFire),
+    };
+
+    /// <summary>
+    /// Remonte du son joue au joueur et a l'evenement.
+    ///
+    /// Chaque appel du jeu a la forme <c>ArcherData.SFX.X.Play(base.X, 1f)</c> : le
+    /// son dit QUOI, et le panoramique - qui n'est autre que l'abscisse de l'entite -
+    /// dit QUI. C'est ce second point qui compte : deux joueurs ayant choisi le meme
+    /// archer partagent le meme CharacterSounds, l'instance seule ne les distinguerait
+    /// pas.
+    ///
+    /// Consequence assumee : une entite qui jouerait un son d'archer depuis la position
+    /// exacte d'un joueur - un squelette qui ramasse une fleche a son abscisse - lui
+    /// emprunterait sa voix. Il faudrait une coincidence au demi-pixel.
+    /// </summary>
+    private static bool FromArcherSound(Monocle.SFX sfx, float panX, float volume)
+    {
+      Level level = Monocle.Engine.Instance?.Scene as Level;
+      if (level == null)
+      {
+        return false;
+      }
+
+      foreach (Monocle.Entity entity in level[Monocle.GameTags.Player])
+      {
+        Player player = entity as Player;
+        CharacterSounds sounds = player?.ArcherData?.SFX;
+        if (sounds == null || Math.Abs(player.X - panX) > 0.5f)
+        {
+          continue;
+        }
+
+        foreach (var watched in Watched)
+        {
+          if (!ReferenceEquals(watched.Sound(sounds), sfx))
+          {
+            continue;
+          }
+
+          ProfileData profile = ProfileAssignment.Get(player.PlayerIndex);
+          return profile != null && ProfileSfx.TryPlay(profile, watched.Event, volume);
+        }
+      }
+
+      return false;
     }
   }
 }

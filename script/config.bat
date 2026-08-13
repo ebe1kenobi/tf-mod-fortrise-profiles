@@ -1,11 +1,15 @@
 set REPO_DRIVE=D:
 set TOWERFALL_DRIVE=C:
 
-set BUILD_NAME=TFModFortRiseProfiles
-set DLL_MOD_FILE_NAME=TFModFortRiseProfiles.dll
-set PDB_MOD_FILE_NAME=TFModFortRiseProfiles.pdb
-set MODULE_DIR_NAME=tf-mod-fortrise-profiles
+set BUILD_NAME=TFModFortRiseArcher
+set DLL_MOD_FILE_NAME=TFModFortRiseArcher.dll
+set PDB_MOD_FILE_NAME=TFModFortRiseArcher.pdb
+set MODULE_DIR_NAME=tf-mod-fortrise-archer
 
+REM Le mod s'appelle desormais Archer ; le REPERTOIRE, lui, n'a pas pu etre
+REM renomme - VSCode et Visual Studio le tenaient ouvert. Quand il sera libre :
+REM   ren D:\__dev\code\FR5tf-mod-fortrise-profiles FR5tf-mod-fortrise-archer
+REM et remplacer profiles par archer dans la ligne qui suit. Rien d'autre a changer.
 set REPO_PATH=D:\__dev\code\FR5tf-mod-fortrise-profiles\
 set REPO_SCRIPT_PATH=%REPO_PATH%script\
 set REPO_BUILD_PATH=%REPO_PATH%VSCode\bin\Debug\net10.0\

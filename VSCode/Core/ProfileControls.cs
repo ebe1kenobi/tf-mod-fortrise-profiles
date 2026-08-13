@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework.Input;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Applique aux entrees du jeu la configuration de touches d'un profil, et la
@@ -23,6 +23,102 @@ namespace TFModFortRiseProfiles
   /// </summary>
   public static class ProfileControls
   {
+    /// <summary>
+    /// Conversions entre les enumerations d'entree du jeu et les entiers stockes
+    /// dans le profil.
+    ///
+    /// Le fichier de profil ne contient que des nombres : il reste lisible, et il ne
+    /// depend pas des valeurs d'une enumeration de XNA ou du jeu, qu'une mise a jour
+    /// pourrait renumeroter.
+    /// </summary>
+    public static int[] ToInts(Buttons[] buttons)
+    {
+      if (buttons == null)
+      {
+        return null;
+      }
+
+      var values = new int[buttons.Length];
+      for (int i = 0; i < buttons.Length; i++)
+      {
+        values[i] = (int)buttons[i];
+      }
+
+      return values;
+    }
+
+    public static int[] ToInts(Keys[] keys)
+    {
+      if (keys == null)
+      {
+        return null;
+      }
+
+      var values = new int[keys.Length];
+      for (int i = 0; i < keys.Length; i++)
+      {
+        values[i] = (int)keys[i];
+      }
+
+      return values;
+    }
+
+    public static Buttons[] ToButtons(int[] values)
+    {
+      if (values == null)
+      {
+        return System.Array.Empty<Buttons>();
+      }
+
+      var buttons = new Buttons[values.Length];
+      for (int i = 0; i < values.Length; i++)
+      {
+        buttons[i] = (Buttons)values[i];
+      }
+
+      return buttons;
+    }
+
+    public static Keys[] ToKeys(int[] values)
+    {
+      if (values == null)
+      {
+        return System.Array.Empty<Keys>();
+      }
+
+      var keys = new Keys[values.Length];
+      for (int i = 0; i < values.Length; i++)
+      {
+        keys[i] = (Keys)values[i];
+      }
+
+      return keys;
+    }
+
+    /// <summary>Les deux listes bout a bout, sans doublon ni valeur nulle.</summary>
+    public static int[] Union(int[] first, int[] second)
+    {
+      var all = new System.Collections.Generic.List<int>();
+
+      if (first != null)
+      {
+        all.AddRange(first);
+      }
+
+      if (second != null)
+      {
+        foreach (int value in second)
+        {
+          if (!all.Contains(value))
+          {
+            all.Add(value);
+          }
+        }
+      }
+
+      return all.ToArray();
+    }
+
     private sealed class Original
     {
       public PlayerInput Input;

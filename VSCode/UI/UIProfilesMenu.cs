@@ -4,10 +4,10 @@ using FortRise;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
-  /// Ecran de la liste des profils : ouvert par la lame PROFILES du menu principal.
+  /// Ecran de la liste des profils : ouvert par la lame ARCHER du menu principal.
   ///
   /// C'est un CustomMenuState et non une Scene a part : MainMenu sait deja faire
   /// entrer et sortir un ecran en fondu, lui donner un titre, gerer le bouton retour
@@ -42,7 +42,7 @@ namespace TFModFortRiseProfiles
     {
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfilesMenu>());
 
-      Main.BackState = MainMenu.MenuState.Main;
+      Main.BackState = MenuNav.Arrive(Main, MainMenu.MenuState.Main);
       Main.TweenBGCameraToY(2);
 
       preview = new UIProfilePreview(PreviewPosition);
@@ -50,7 +50,9 @@ namespace TFModFortRiseProfiles
       items.Clear();
       items.Add(preview);
 
-      Build(0);
+      // Zero n'est le bon rang qu'a la premiere visite : au retour d'un sous-ecran,
+      // on veut la ligne qu'on avait quittee.
+      Build(MenuNav.Resume(Main, int.MaxValue));
     }
 
     public override void Destroy()
@@ -83,7 +85,7 @@ namespace TFModFortRiseProfiles
       forgeRow.RightText = () => ForgeStorage.Designs.Count > 0
           ? ForgeStorage.Designs.Count.ToString()
           : "";
-      forgeRow.OnConfirmed = () => Main.State = ModRegisters.MenuState<UIForgeList>();
+      forgeRow.OnConfirmed = () => MenuNav.Push(Main, ModRegisters.MenuState<UIForgeList>());
       rows.Add(forgeRow);
 
       foreach (ProfileData profile in profiles)
@@ -117,6 +119,7 @@ namespace TFModFortRiseProfiles
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 190f);
 
+      MenuNav.Track(Main, rows);
       MenuItem toSelect = rows[Math.Clamp(selectIndex, 0, rows.Count - 1)];
       Main.ToStartSelected = toSelect;
 
@@ -210,7 +213,7 @@ namespace TFModFortRiseProfiles
     private void Edit(ProfileData profile)
     {
       Editing = profile;
-      Main.State = ModRegisters.MenuState<UIProfileEdit>();
+      MenuNav.Push(Main, ModRegisters.MenuState<UIProfileEdit>());
     }
 
     /// <summary>

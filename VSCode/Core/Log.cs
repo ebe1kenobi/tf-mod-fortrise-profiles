@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Journal du mod.

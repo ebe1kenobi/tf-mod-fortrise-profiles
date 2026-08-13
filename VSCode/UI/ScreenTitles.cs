@@ -4,7 +4,7 @@ using Monocle;
 using MonoMod.Utils;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Donne un bandeau de titre a un etat de menu ajoute par un mod.

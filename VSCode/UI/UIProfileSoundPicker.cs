@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FortRise;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRiseProfiles
+namespace TFModFortRiseArcher
 {
   /// <summary>
   /// Choix des WAV attaches a un evenement d'un profil.
@@ -40,12 +40,12 @@ namespace TFModFortRiseProfiles
 
       if (profile == null || string.IsNullOrEmpty(soundEvent))
       {
-        Main.State = soundsState;
+        MenuNav.Switch(Main, soundsState);
         return;
       }
 
       ScreenTitles.Apply(Main, ModRegisters.MenuState<UIProfileSoundPicker>());
-      Main.BackState = soundsState;
+      Main.BackState = MenuNav.Arrive(Main, soundsState);
       Main.TweenBGCameraToY(2);
 
       Main.Add(new UIPickerHeader(new Vector2(160f, 34f), profile.Name, soundEvent));
@@ -110,7 +110,10 @@ namespace TFModFortRiseProfiles
 
       float lastY = FirstRowY + (rows.Count - 1) * RowStep;
       Main.MaxUICameraY = Math.Max(0f, lastY - 180f);
-      Main.ToStartSelected = rows[0];
+      // Le curseur retrouve la ligne qu'on avait quittee, et non la premiere :
+      // sans cela, chaque aller-retour dans un sous-ecran oblige a redescendre.
+      MenuNav.Track(Main, rows);
+      Main.ToStartSelected = rows[MenuNav.Resume(Main, rows.Count)];
     }
 
     public override void Destroy()
